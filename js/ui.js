@@ -19,7 +19,11 @@ const QTY = [1, 2, 3, 4, 5, 6];
 
 // --- шапка -------------------------------------------------------------------
 
+// Связь видна только когда с ней что-то не так: «на связи» владелец попросил убрать
+const QUIET = new Set(['online', 'connecting']);
+
 function syncMark(m) {
+  if (QUIET.has(m.status) && !m.pending) return '';
   const label = m.status === 'offline' && m.pending ? `нет сети, в очереди ${m.pending}` : C.SYNC[m.status] || '';
   return `<p class="sync" data-status="${m.status}"><span class="sync-dot" aria-hidden="true"></span>${label}</p>`;
 }

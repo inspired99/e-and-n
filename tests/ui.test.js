@@ -13,6 +13,12 @@ const state = demoState(TODAY);
 const model = (view, st = state, today = TODAY) => buildModel(st, today, { me: 0, kind: 'demo', status: 'demo', ...view });
 const clean = (html) => assert.doesNotMatch(html, /undefined|NaN|\[object Object\]|null/);
 
+test('надпись о связи только когда с ней что-то не так', () => {
+  assert.doesNotMatch(UI.page(model({ status: 'online', kind: 'firebase' })), /на связи|class="sync"/);
+  assert.match(UI.page(model({ status: 'offline', pending: 2, kind: 'firebase' })), /нет сети, в очереди 2/);
+  assert.match(UI.page(model({ status: 'denied', kind: 'firebase' })), /нет доступа к базе/);
+});
+
 test('главная: общая комната, оба персонажа, неделя, месяц и питание', () => {
   for (const mode of ['week', 'month']) {
     for (const me of [0, 1]) {

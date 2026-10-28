@@ -123,6 +123,11 @@ main {
   padding-top: max(var(--s1), env(safe-area-inset-top));
 }
 
+/* разделы всегда справа, даже когда слева пусто */
+.top .tabs {
+  margin-left: auto;
+}
+
 .sync {
   display: flex;
   align-items: center;
