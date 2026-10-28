@@ -72,14 +72,6 @@ function gemRow(n, small = false) {
   return [0, 1, 2].map((i) => gem(i < n, { scale: small ? 1 : 2 })).join('');
 }
 
-/** Бриллианты недели. */
-function weekGems(m, wk, who, small = false) {
-  const n = wk.gems[who];
-  const name = esc(m.players[who].name);
-  return `<span class="gems${small ? ' gems-sm' : ''}${wk.closed ? '' : ' is-open'}" role="img"
-    aria-label="${name}, неделя: ${C.nGems(n)} из ${GEMS}${wk.closed ? '' : ' пока'}, ${C.weekWhy(wk, who, m.s)}">${gemRow(n, small)}</span>`;
-}
-
 /** Бриллианты месяца. */
 function monthGems(m, ms, who) {
   const n = ms.gems[who];
@@ -119,14 +111,13 @@ function trackerBoard(m) {
   const ms = m.thisMonth;
   const col = (who, body) => `<div class="col${who === m.me ? ' is-me' : ''}">${body}</div>`;
   const names = [0, 1]
-    .map((who) => col(who, `<p class="who"><span class="who-name">${esc(m.players[who].name)}</span><span class="lvl" aria-label="уровень ${m.levels[who]}">lvl ${m.levels[who]}</span></p>`))
+    .map((who) => col(who, `<p class="who"><span class="who-name">${esc(m.players[who].name)}</span></p>`))
     .join('');
   const week = [0, 1]
     .map((who) =>
       col(
         who,
-        `<dl class="stats">${WEEKLY.map((k) => stat(k, wk.counts[k][who], m.s.goals[k][who])).join('')}</dl>
-        ${wk.gems[who] == null ? '' : `<p class="gems-line">${weekGems(m, wk, who)}${pending(wk.closed)}</p>`}`,
+        `<dl class="stats">${WEEKLY.map((k) => stat(k, wk.counts[k][who], m.s.goals[k][who])).join('')}</dl>`,
       ),
     )
     .join('');
@@ -235,13 +226,13 @@ function diaryCell(m, day, who) {
     aria-label="${name}, ${C.dayShort(day)}: ${what}. отметить">${html}</button></td>`;
 }
 
-/** Изменения уровня на неделе: вверх, вниз, вниз за плохой месяц. */
-function lvlMarks(wk, who) {
-  let out = '';
-  if (wk.lvlUp[who]) out += '<span class="lvl lvl-up">lvl up</span>';
-  if (wk.lvlDown[who]) out += '<span class="lvl lvl-down">lvl down</span>';
-  if (wk.monthDown && wk.monthDown[who]) out += '<span class="lvl lvl-down">lvl down: месяц</span>';
-  return out;
+/** Итог недели у человека: спорт и чтение против цели, набранная цель зеленым. */
+function weekGoals(m, wk, who) {
+  return `<span class="wk-goals">${WEEKLY.map((k) => {
+    const done = wk.counts[k][who];
+    const goal = m.s.goals[k][who];
+    return `<span class="${done >= goal ? 'is-met' : ''}">${C.KIND[k].name} <b>${done}</b> из ${goal}</span>`;
+  }).join('')}</span>`;
 }
 
 /** Неделя трекером: строка на день, у каждого свой столбец. */
@@ -261,7 +252,7 @@ function weekBlock(m) {
     .join('');
   const total = wk.pre
     ? ''
-    : `<tfoot><tr><th scope="row">итог</th>${[0, 1].map((who) => `<td>${weekGems(m, wk, who)}${pending(wk.closed)}${lvlMarks(wk, who)}</td>`).join('')}</tr></tfoot>`;
+    : `<tfoot><tr><th scope="row">итог</th>${[0, 1].map((who) => `<td>${weekGoals(m, wk, who)}</td>`).join('')}</tr></tfoot>`;
   return `<div class="week-head">
       <h2 id="week-title">${title}</h2>
       <p class="week-range">${C.weekRange(wk.start)}</p>
@@ -276,10 +267,9 @@ function weekBlock(m) {
 /** Сетка месяца, как календарь в заметках: семь столбцов по дням недели, справа бриллианты недели. */
 function calendarGrid(m, who) {
   const name = esc(m.players[who].name);
-  const head = `${C.DOW_SHORT.map((d) => `<th scope="col">${d}</th>`).join('')}<th scope="col" class="cal-gems"><span class="sr">бриллианты недели</span></th>`;
+  const head = C.DOW_SHORT.map((d) => `<th scope="col">${d}</th>`).join('');
   const rows = monthWeeks(m.month)
     .map((w) => {
-      const wk = m.weeks.find((x) => x.start === w);
       const days = weekDays(w)
         .map((day) => {
           const { html, names } = cellParts(m, day, who);
@@ -290,8 +280,7 @@ function calendarGrid(m, who) {
             data-key="cal-${who}-${day}" aria-label="${name}, ${C.dayShort(day)}: ${what}. отметить"><span class="cal-num">${C.dayNum(day)}</span>${html}</button></td>`;
         })
         .join('');
-      const gems = wk && !wk.future ? weekGems(m, wk, who, true) : '';
-      return `<tr>${days}<td class="cal-gems">${gems}</td></tr>`;
+      return `<tr>${days}</tr>`;
     })
     .join('');
   return `<table class="cal">
@@ -367,13 +356,12 @@ function person(m, who) {
       </button></li>`;
     })
     .join('');
-  const allGems = m.weeks.filter((w) => w.closed).reduce((n, w) => n + w.gems[who], 0);
   return `<section class="person" aria-label="${name}">
     <div class="person-head">
       ${hero(who, m.looks[who], 'idle', { size: 64 })}
       <div>
         <h2>${name}</h2>
-        <p class="person-sub">lvl ${m.levels[who]}, бриллиантов за недели: ${allGems}</p>
+        <p class="person-sub">сейчас ${C.MOOD[m.moods[who]]}</p>
       </div>
     </div>
     ${calendarGrid(m, who)}
@@ -382,30 +370,22 @@ function person(m, who) {
   </section>`;
 }
 
-/** Сравнение за месяц: кто сколько, лучший результат подчеркнут. */
-function versus(m) {
+/** Месяц на двоих: у каждого свой столбец, без «кто лучше». */
+function monthForTwo(m) {
   const ms = m.shownMonth;
-  const row = (pic, label, values, lowerWins, cells) => {
-    const best = lowerWins == null || values[0] === values[1] ? -1 : (values[0] < values[1]) === lowerWins ? 0 : 1;
-    const tds = (cells || values).map((v, who) => `<td class="${who === best ? 'is-better' : ''}">${v}</td>`).join('');
-    return `<tr><th scope="row"><span class="rh">${pic}<span>${label}</span></span></th>${tds}</tr>`;
-  };
+  const row = (pic, label, cells) => `<tr><th scope="row"><span class="rh">${pic}<span>${label}</span></span></th>${cells.map((v) => `<td>${v}</td>`).join('')}</tr>`;
   const count = (kind) => [0, 1].map((who) => m.events.filter((e) => e.kind === kind && e.who === who && e.day.slice(0, 7) === m.month).length);
-  const inGrid = monthWeeks(m.month);
-  const weekGemsSum = [0, 1].map((who) => m.weeks.filter((w) => w.closed && inGrid.includes(w.start)).reduce((n, w) => n + w.gems[who], 0));
   const overs = [0, 1].map((who) => ms.over[who].length);
   const head = [0, 1].map((who) => `<th scope="col">${heroTogether(who, m.looks[who], 'idle', { size: 48 })}<span>${esc(m.players[who].name)}</span></th>`).join('');
   const gemsCells = [0, 1].map((who) => `<span class="gems${ms.closed ? '' : ' is-open'}" role="img" aria-label="${C.nGems(ms.gems[who])}${ms.closed ? '' : ' пока'}">${gemRow(ms.gems[who], true)}</span>`);
-  return `<table class="versus">
-    <thead><tr><th scope="col"><span class="sr">что сравниваем</span></th>${head}</tr></thead>
+  return `<table class="duo">
+    <thead><tr><th scope="col"><span class="sr">что за месяц</span></th>${head}</tr></thead>
     <tbody>
-      ${row(icon('sport'), 'спорт', count('sport'), false)}
-      ${row(icon('read'), 'чтение', count('read'), false)}
-      ${row(icon('cook'), 'готовка', ms.cook.map((c) => c.done), false)}
-      ${row(chip('chocolate', 'is-over', ''), 'перебор, продуктов', overs, true)}
-      ${row(gem(true), 'бриллианты недель', weekGemsSum, false)}
-      ${row(gem(true), `бриллианты месяца${ms.closed ? '' : ', пока'}`, ms.gems, false, gemsCells)}
-      ${row('<span class="lvl">lvl</span>', 'уровень', m.levels, false)}
+      ${row(icon('sport'), 'спорт', count('sport'))}
+      ${row(icon('read'), 'чтение', count('read'))}
+      ${row(icon('cook'), 'готовка', ms.cook.map((c) => `${c.done} из ${c.goal}`))}
+      ${row(chip('chocolate', 'is-over', ''), 'продуктов сверх лимита', overs)}
+      ${row(gem(true), `бриллианты месяца${ms.closed ? '' : ', пока'}`, gemsCells)}
     </tbody>
   </table>
   <p class="together-line"><b>вместе: ${C.nTimes(m.together.month)}</b> за месяц, ${C.nTimes(m.together.all)} за все время. Это дни, когда оба отметили одно и то же полезное.</p>`;
@@ -419,7 +399,7 @@ function stats(m) {
       <h2 class="page-title" id="month-title">${prop('candle', 40)}${C.monthTitle(m.month)}</h2>
       ${monthNav(m)}
     </div>
-    ${versus(m)}
+    ${monthForTwo(m)}
     </section>
     ${person(m, 0)}
     ${person(m, 1)}
@@ -462,38 +442,19 @@ function rules(m) {
   const s = m.s;
   const [a, b] = m.players.map((p) => esc(p.name));
   const item = (pic, title, body) => `<li class="rule"><span class="rule-pic">${pic}</span><div><h2>${title}</h2><p>${body}</p></div></li>`;
-  const keyRow = (n, text) => `<li><span class="gems">${gemRow(n)}</span><span>${text}</span></li>`;
   const goals = (k) => (s.goals[k][0] === s.goals[k][1] ? `по ${s.goals[k][0]}` : `${a} ${s.goals[k][0]}, ${b} ${s.goals[k][1]}`);
-  const lvlUp = s.lvlWeeks > 1 ? `за каждые ${C.nWeeks(s.lvlWeeks)} подряд, где бриллиантов ${s.lvlGems} или больше` : `за каждую неделю, где бриллиантов ${s.lvlGems} или больше`;
-  const weakWeek = s.lvlDownGems ? `бриллиантов ${s.lvlDownGems} или меньше` : 'нет ни одного бриллианта';
-  const lvlDown = s.lvlDownWeeks > 1 ? `за ${C.nWeeks(s.lvlDownWeeks)} подряд, где ${weakWeek}` : `за неделю, где ${weakWeek}`;
-  const weakMonth = s.badMonthGems ? `бриллиантов ${s.badMonthGems} или меньше` : 'не осталось ни одного бриллианта';
   return `<main id="main" class="page">
     <section class="rules-panel">
     <div class="rules-head"><h1 class="page-title">правила</h1>${prop('lantern', 76)}</div>
     <ul class="rule-list">
-      ${item(`${icon('sport', { scale: 3 })}${icon('read', { scale: 3 })}`, 'неделя', `Спорт и чтение считаются с понедельника по воскресенье. Цель на неделю: спорт ${goals('sport')}, чтение ${goals('read')}. Сверх цели в счет не идет.`)}
+      ${item(`${icon('sport', { scale: 3 })}${icon('read', { scale: 3 })}`, 'неделя', `Спорт и чтение считаются с понедельника по воскресенье. Цель на неделю: спорт ${goals('sport')}, чтение ${goals('read')}. Набрал цель: «цель недели!», число становится зеленым.`)}
       ${item(icon('cook', { scale: 3 }), 'месяц', `Готовка дома считается за месяц, цель ${goals('cook')}. Питание тоже по месяцам: у каждого свой лимит на каждый продукт и свой список того, что считаем.`)}
       ${item(chip('chocolate', 'is-over', ''), 'перебор', `Продукт сверх лимита красный, с крестиком. ${s.overCost ? `Каждый такой продукт снимает ${s.overCost > 1 ? `${s.overCost} бриллианта` : 'бриллиант'} месяца` : 'Бриллианты месяца он не снимает'}. Штрафов и отработок нет.`)}
       ${item(`${heroTogether(0, m.looks[0], 'idle', { size: 40 })}${heroTogether(1, m.looks[1], 'idle', { size: 40 })}`, 'вместе', 'Оба отметили одно и то же полезное в один день: всплывает «вместе!», в итогах растет счетчик.')}
     </ul>
-    <section class="gem-key" aria-labelledby="gem-week-title">
-      <h2 id="gem-week-title">бриллианты недели</h2>
-      <p class="key-note">По среднему выполнению целей спорта и чтения.</p>
-      <ul>
-        ${keyRow(3, `от ${s.gem3}%`)}
-        ${keyRow(2, `от ${s.gem2}%`)}
-        ${keyRow(1, `от ${s.gem1}%`)}
-        ${keyRow(0, 'меньше')}
-      </ul>
-    </section>
     <section class="gem-key" aria-labelledby="gem-month-title">
       <h2 id="gem-month-title">бриллианты месяца</h2>
       <p class="key-note">Месяц начинается с трех. Минус ${s.overCost} за каждый продукт сверх лимита, минус ${s.cookCost}, если готовки меньше цели. Не меньше нуля. Пока месяц идет, бриллианты считаются так, будто он кончился сегодня.</p>
-    </section>
-    <section class="gem-key" aria-labelledby="lvl-title">
-      <h2 id="lvl-title">уровень</h2>
-      <p class="key-note">Начинается с lvl 0 и растет на один ${lvlUp}, до lvl ${s.lvlMax}. Падает на один ${lvlDown}, и за закрытый месяц, где ${weakMonth}. Может уйти в минус, до lvl -${s.lvlMax}.</p>
     </section>
     <section class="gem-key" aria-labelledby="pose-title">
       <h2 id="pose-title">персонажи</h2>
@@ -702,32 +663,14 @@ export function menuSheet(m) {
     </section>
     <section class="set">
       <h3>лимиты на месяц</h3>
-      <p class="hint">Ниже нуля стоит «не считаем»: продукт пропадает из плиток и из листа «отметить».</p>
+      <p class="hint">Ниже нуля стоит «не считаем»: продукт пропадает из таблицы еды и из листа «отметить».</p>
       ${limits}
-    </section>
-    <section class="set">
-      <h3>бриллианты недели</h3>
-      <p class="hint">Среднее выполнение целей спорта и чтения, в процентах:</p>
-      ${one('три бриллианта, от', 'gem3')}
-      ${one('два, от', 'gem2')}
-      ${one('один, от', 'gem1')}
     </section>
     <section class="set">
       <h3>бриллианты месяца</h3>
       <p class="hint">Месяц начинается с трех бриллиантов. Сколько снимает:</p>
       ${one('продукт сверх лимита', 'overCost')}
       ${one('готовка меньше цели', 'cookCost')}
-    </section>
-    <section class="set">
-      <h3>уровень</h3>
-      <p class="hint">Растет на один за недели подряд, в которых хватает бриллиантов:</p>
-      ${one('вверх: недель подряд', 'lvlWeeks')}
-      ${one('бриллиантов за неделю, не меньше', 'lvlGems')}
-      <p class="hint">Падает на один за плохие недели подряд и за плохой месяц:</p>
-      ${one('вниз: плохих недель подряд', 'lvlDownWeeks')}
-      ${one('плохая неделя: бриллиантов не больше', 'lvlDownGems')}
-      ${one('плохой месяц: бриллиантов не больше', 'badMonthGems')}
-      ${one('потолок уровня', 'lvlMax')}
     </section>
     <section class="set">
       <h3>персонаж</h3>
@@ -760,11 +703,6 @@ export function menuSheet(m) {
       <button class="btn" type="button" data-act="reload" data-key="reload">обновить приложение</button>
     </section>
     <section class="set">
-      <h3>начать заново</h3>
-      <p class="hint">${s.resetDay ? `Уровни обнулены ${C.dayMonth(s.resetDay)}. Что было раньше, видно в дневнике, но в уровень не идет.` : 'Обнулить уровни у обоих с сегодняшнего дня. Отметки и прошлые недели останутся в дневнике.'}</p>
-      <button class="btn" type="button" data-act="reset" data-key="reset" ${readOnly}>обнулить уровни</button>
-    </section>
-    <section class="set">
       <h3>журнал</h3>
       <div class="row">
         <button class="btn btn-sm" type="button" data-act="export" data-key="export">скачать журнал (JSON)</button>
@@ -788,7 +726,7 @@ export function goalSheet(m, sel) {
     <section class="set goal">
       <div class="goal-top"><span class="plate plate-show">${sticker(id)}</span><p>${meta.how}</p></div>
       <ul class="goal-list">${rows}</ul>
-      ${numRow('сколько нужно', key, m.s[key], { min: 1, max: id === 'level' ? m.s.lvlMax : GOAL_MAX, off: m.kind === 'demo' })}
+      ${numRow('сколько нужно', key, m.s[key], { min: 1, max: GOAL_MAX, off: m.kind === 'demo' })}
     </section>`;
 }
 
@@ -818,11 +756,10 @@ export function welcome({ startDay, local, missing, fixed = false }) {
   </main>`;
 }
 
-export function whoAreYou(players, { demo = false, levels = [0, 0], looks = ['base', 'base'] } = {}) {
+export function whoAreYou(players, { demo = false, looks = ['base', 'base'] } = {}) {
   const btn = (who) => `<button class="pick pick-btn" type="button" data-act="i-am" data-who="${who}">
       ${heroTogether(who, looks[who], 'idle', { size: 136 })}
       <span class="pick-name">${esc(players[who].name)}</span>
-      <span class="lvl">lvl ${levels[who]}</span>
     </button>`;
   return `<main class="welcome" id="main">
     <h1 class="line">кто заходит</h1>

@@ -18,12 +18,6 @@ export function looksOf(state) {
   return [0, 1].map((who) => (LOOKS[who].includes(l[`p${who}`]) ? l[`p${who}`] : 'base'));
 }
 
-/** Уровни обоих на сегодня: для экрана «кто заходит». */
-export function levelsOf(state, today) {
-  const weeks = R.timeline(state, today);
-  return [0, 1].map((who) => R.level(weeks, who));
-}
-
 /**
  * @param {object} state журнал: settings, events
  * @param {string} today 'YYYY-MM-DD' по Москве
@@ -79,13 +73,12 @@ export function buildModel(state, today, view) {
     looks: looksOf(state),
     events,
     moods: [0, 1].map((who) => R.mood(state, who, today)),
-    levels: [0, 1].map((who) => R.level(weeks, who)),
     together: {
       month: R.together(state, `${month}-01`, R.monthEnd(month) < today ? R.monthEnd(month) : today).length,
       all: R.together(state, '0000-01-01', today).length,
     },
     screen,
-    stickers: R.stickers(state, weeks, today),
+    stickers: R.stickers(state, today),
     status: view.status || 'local',
     pending: view.pending || 0,
     kind: view.kind || 'local',

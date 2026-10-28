@@ -78,7 +78,8 @@ test('итоги, питание и правила', () => {
   }
   const stats = UI.page(model({ screen: 'stats' }));
   assert.equal(stats.split('class="cal"').length - 1, 2);
-  assert.equal(stats.split('data-act="goal-open"').length - 1, 12); // шесть достижений у каждого
+  assert.equal(stats.split('data-act="goal-open"').length - 1, 8); // четыре достижения у каждого
+  assert.doesNotMatch(stats, /is-better|сравн/); // месяц на двоих, без «кто лучше»
   assert.match(stats, /вместе: \d+ раз/);
   const food = UI.page(model({ screen: 'food' }));
   assert.equal(food.split('<tr><th scope="row">').length - 1, FOOD.length + 2); // продукты, готовка, бриллианты
@@ -99,7 +100,7 @@ test('листы: отметить, одежда, меню, достижения
     UI.lookSheet(m, { who: 0 }),
     UI.lookSheet(m, { who: 1 }),
     UI.menuSheet(m),
-    ...['sport', 'read', 'cook', 'nofast', 'gems', 'level'].map((id) => UI.goalSheet(m, { id })),
+    ...['sport', 'read', 'cook', 'nofast'].map((id) => UI.goalSheet(m, { id })),
   ];
   for (const html of sheets) {
     assert.ok(html.length > 200);
@@ -142,18 +143,39 @@ test('отметить: полезное или еда по очереди, ед
   assert.match(both, /data-kind="croissant"/);
 });
 
-test('меню: все числа правил, лимит «не считаем» и обнуление', () => {
+test('меню: все числа правил и лимит «не считаем», без уровня и бриллиантов недели', () => {
   const menu = UI.menuSheet(model({}));
-  for (const path of ['weekly/sport/goal/p0', 'weekly/read/goal/p1', 'monthly/cook/goal/p1', 'food/chips/p0', 'food/croissant/p0', 'gem3', 'gem2', 'gem1', 'overCost', 'cookCost', 'lvlWeeks', 'lvlGems', 'lvlDownWeeks', 'lvlDownGems', 'badMonthGems', 'lvlMax', 'coughDays', 'fitSport']) {
+  for (const path of ['weekly/sport/goal/p0', 'weekly/read/goal/p1', 'monthly/cook/goal/p1', 'food/chips/p0', 'food/croissant/p0', 'overCost', 'cookCost', 'coughDays', 'fitSport']) {
     assert.match(menu, new RegExp(`data-path="${path}"`), path);
   }
+  assert.doesNotMatch(menu, /data-path="(gem[123]|lvl\w+|badMonthGems)"/);
   // круассаны Елисей не считает: минус закрыт, плюс вернет в счет
   assert.match(menu, /data-path="food\/croissant\/p0" data-v="" [^>]*data-d="-1"[^>]*disabled/);
   assert.match(menu, /<span class="num-value is-off">не считаем<\/span>/);
-  assert.match(menu, /data-act="reset"/);
-  const after = { ...demoState(TODAY) };
-  after.settings = { ...after.settings, resetDay: '2026-10-20' };
-  assert.match(UI.menuSheet(buildModel(after, TODAY, { me: 0, kind: 'demo' })), /обнулены 20 октября/);
+  assert.doesNotMatch(menu, /data-act="reset"|обнулить/); // обнуление было только для уровня
+});
+
+test('нет ни уровня, ни бриллиантов недели: главная, дневник, итоги, правила, кто заходит', () => {
+  const pages = [
+    UI.page(model({})),
+    UI.page(model({ board: 'food' })),
+    UI.page(model({ mode: 'month' })),
+    UI.page(model({ viewStart: '2026-10-12' })), // закрытая неделя в дневнике
+    UI.page(model({ screen: 'stats' })),
+    UI.page(model({ screen: 'rules' })),
+    UI.whoAreYou([{ name: 'Елисей' }, { name: 'Неля' }]),
+  ];
+  for (const html of pages) {
+    assert.doesNotMatch(html, /lvl|уров/i);
+    assert.doesNotMatch(html, /бриллиант\S* недел|неделя: \d+ бриллиант|cal-gems/);
+  }
+  // бриллианты остались только у месяца: на главной по одному ряду у каждого
+  const home = UI.page(model({}));
+  assert.equal(home.match(/class="gems[ "]/g).length, 2);
+  assert.match(home, /aria-label="Елисей, месяц: \d бриллиант/);
+  // итог недели в дневнике: спорт и чтение против цели
+  const week = UI.page(model({ viewStart: '2026-10-12' }));
+  assert.match(week, /<tfoot>[^]*class="wk-goals"[^]*спорт <b>\d+<\/b> из 3[^]*чтение <b>\d+<\/b> из 3/);
 });
 
 test('версия сайта видна внизу главной и в меню, а у себя на машине ее нет', () => {
@@ -175,9 +197,9 @@ test('общий дневник: без ссылок и кодов, другой
 test('первый запуск, выбор персонажа в своих образах, загрузка', () => {
   const players = [{ name: 'Елисей' }, { name: 'Неля' }];
   assert.match(UI.welcome({ startDay: '2026-10-26', local: true }), /id="create"/);
-  const who = UI.whoAreYou(players, { levels: [2, -1], looks: ['city', 'winter'] });
+  const who = UI.whoAreYou(players, { looks: ['city', 'winter'] });
   assert.match(who, /data-act="i-am"/);
-  assert.match(who, /elisey-city-idle[^]*lvl 2[^]*nelya-winter-idle[^]*lvl -1/);
+  assert.match(who, /elisey-city-idle[^]*Елисей[^]*nelya-winter-idle[^]*Неля/);
   assert.match(UI.loading('offline'), /Нет сети/);
 });
 

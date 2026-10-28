@@ -5,7 +5,7 @@ import * as R from './rules.js';
 import * as C from './copy.js';
 import * as UI from './ui.js';
 import { demoState } from './demo.js';
-import { buildModel, levelsOf, looksOf, playersOf } from './model.js';
+import { buildModel, looksOf, playersOf } from './model.js';
 import { createStore, newId, newRoomKey, prefs, readLocalRoom } from './store.js';
 import { firebaseAdapter, localAdapter, memoryAdapter } from './sync.js';
 import { checkVersion, hardReload } from './update.js';
@@ -100,7 +100,7 @@ function render() {
   }
   if (me == null) {
     if (sheet.open) sheet.close();
-    app.innerHTML = UI.whoAreYou(playersOf(state), { demo: isDemo, levels: levelsOf(state, today()), looks: looksOf(state) });
+    app.innerHTML = UI.whoAreYou(playersOf(state), { demo: isDemo, looks: looksOf(state) });
     return;
   }
   const m = model();
@@ -239,15 +239,6 @@ const actions = {
     if (R.isFood(kind)) targets = targets.filter((w) => m.s.limits[kind][w] != null);
     closeSheet();
     if (targets.length) logEvents(kind, day, targets, Number(el.dataset.n) || 1);
-  },
-  /** Обнулить уровни с сегодняшнего дня. Журнал не трогаем, поэтому это можно отменить. */
-  reset() {
-    const ok = window.confirm('Обнулить уровни у обоих с сегодняшнего дня? Отметки и прошлые недели останутся в дневнике.');
-    if (!ok) return;
-    const was = (store.state.settings || {}).resetDay || null;
-    store.write([{ path: 'settings/resetDay', value: today() }]);
-    closeSheet();
-    toast('уровни обнулены', () => store.write([{ path: 'settings/resetDay', value: was }]));
   },
   /** Поправить число в уже сделанной записи еды. Лист остается открытым: видно, что получилось. */
   'set-qty'(el) {

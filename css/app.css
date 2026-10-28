@@ -454,10 +454,6 @@ main > .scene {
   line-height: 1.3;
 }
 
-.who .lvl {
-  margin-left: 0;
-}
-
 .is-me .who-name {
   text-decoration: underline;
   text-decoration-color: var(--marker);
@@ -776,16 +772,30 @@ main > .week {
   color: var(--muted);
 }
 
-/* бриллианты недели */
+/* итог недели: спорт и чтение против цели, набранная цель зеленым */
+.wk-goals {
+  display: grid;
+  gap: 2px;
+  font-size: var(--text-sm);
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.wk-goals b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.wk-goals .is-met b {
+  color: var(--good);
+}
+
+/* бриллианты месяца */
 .gems {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   vertical-align: middle;
-}
-
-.gems-sm {
-  gap: 1px;
 }
 
 /* неделя еще идет: бриллианты бледнее */
@@ -797,36 +807,6 @@ main > .week {
   margin-left: var(--s2);
   font-size: var(--text-sm);
   color: var(--muted);
-}
-
-/* уровень персонажа: плашка пиксельным шрифтом */
-.lvl {
-  display: inline-block;
-  margin-left: var(--s2);
-  padding: 2px 6px 1px;
-  border: 2px solid var(--ink);
-  border-radius: var(--r-in);
-  background: var(--white);
-  font-family: var(--font-display);
-  font-size: 0.625rem;
-  line-height: 1.6;
-  color: var(--ink);
-  vertical-align: middle;
-}
-
-.pick .lvl {
-  margin-left: 0;
-}
-
-/* неделя, на которой уровень вырос */
-.lvl-up {
-  border-color: var(--pen);
-  color: var(--pen);
-}
-
-.lvl-down {
-  border-color: var(--foul);
-  color: var(--foul);
 }
 
 /* --- декор ---------------------------------------------------------------- */
@@ -849,68 +829,60 @@ main > .week {
   margin-top: -6px;
 }
 
-/* --- итоги: сравнение за месяц -------------------------------------------------- */
+/* --- итоги: месяц на двоих ------------------------------------------------------ */
 
-.versus {
+.duo {
   width: 100%;
   margin-top: var(--s4);
   border-collapse: collapse;
   table-layout: fixed;
 }
 
-.versus thead th {
+.duo thead th {
   padding-bottom: var(--s2);
   font-weight: 600;
   text-align: center;
   vertical-align: bottom;
 }
 
-.versus thead th:first-child {
+.duo thead th:first-child {
   width: 44%;
 }
 
-.versus thead .stand {
+.duo thead .stand {
   display: flex;
   margin-bottom: -2px;
 }
 
-.versus thead span {
+.duo thead span {
   display: block;
 }
 
-.versus tbody th,
-.versus tbody td {
+.duo tbody th,
+.duo tbody td {
   padding: 6px 0;
   border-top: 1px solid var(--line);
 }
 
-.versus tbody th {
+.duo tbody th {
   font-weight: 400;
   text-align: left;
 }
 
-.versus .rh {
+.duo .rh {
   min-height: 44px;
 }
 
 /* значки 24 px и обведенный значок 32 px стоят в одной колонке */
-.versus .rh > .px {
+.duo .rh > .px {
   margin-inline: 4px;
 }
 
-.versus td {
+.duo td {
   text-align: center;
   font-size: 1.375rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-}
-
-/* у кого лучше, тот подчеркнут огнем */
-.versus td.is-better {
-  text-decoration: underline;
-  text-decoration-color: var(--marker);
-  text-decoration-thickness: 3px;
-  text-underline-offset: 6px;
 }
 
 /* --- итоги: календарь месяца ---------------------------------------------------- */
@@ -985,10 +957,6 @@ main > .week {
   border-left: 1px solid var(--line);
 }
 
-.cal td.cal-gems {
-  border-left: 0;
-}
-
 @media (hover: hover) {
   button.cal-cell:hover {
     background: var(--tint);
@@ -1020,16 +988,6 @@ main > .week {
   height: 28px;
 }
 
-.cal td.cal-gems {
-  padding-top: 26px;
-  text-align: center;
-}
-
-.cal th.cal-gems,
-.cal td.cal-gems {
-  width: 42px;
-}
-
 /* --- наклейки --------------------------------------------------------------- */
 
 .slots-title {
@@ -1040,9 +998,10 @@ main > .week {
   color: var(--muted);
 }
 
+/* четыре достижения в один ряд */
 .slots {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--s2);
   margin-top: var(--s2);
 }
@@ -1166,7 +1125,7 @@ main > .week {
   color: var(--muted);
 }
 
-/* вместе: строка под сравнением */
+/* вместе: строка под месяцем на двоих */
 .together-line {
   margin-top: var(--s4);
   max-width: 56ch;
@@ -2266,9 +2225,7 @@ ol.rule-list .rule h2::before {
   }
 
 
-  .slots {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
+
 
   .cal-cell {
     flex-direction: row;

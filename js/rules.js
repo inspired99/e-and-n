@@ -14,7 +14,7 @@ export const FAST = ['shawarma', 'fastfood', 'burger'];
 export const KINDS = [...GOOD, ...FOOD];
 export const isFood = (kind) => FOOD.includes(kind);
 
-/** Бриллиантов в неделе и в месяце не больше трех. */
+/** Бриллиантов в месяце не больше трех. */
 export const GEMS = 3;
 /** В базе «этому не считаем» хранится как -1: Firebase стирает null. */
 export const OFF = -1;
@@ -34,56 +34,31 @@ export const DEFAULTS = {
     flatbread: [5, 5],
     curd: [5, null],
   },
-  // бриллианты недели по среднему прогрессу спорта и чтения, в процентах
-  gem3: 100,
-  gem2: 66,
-  gem1: 33,
   // месяц: минус столько бриллиантов за каждый продукт сверх лимита и за цель готовки, не набранную к концу
   overCost: 1,
   cookCost: 1,
-  // плохой месяц: бриллиантов не больше этого, снимает уровень
-  badMonthGems: 0,
-  // уровень растет за недели подряд с таким числом бриллиантов
-  lvlWeeks: 2,
-  lvlGems: 2,
-  // плохая неделя: бриллиантов не больше этого; столько плохих подряд снимают уровень
-  lvlDownGems: 0,
-  lvlDownWeeks: 1,
-  // уровень от -lvlMax до lvlMax
-  lvlMax: 10,
   // поза: кашляет после стольких дней без спорта, в форме от стольких тренировок за неделю
   coughDays: 7,
   fitSport: 2,
-  // с этого дня уровень считается заново: раньше ничего не двигает, история остается
-  resetDay: '',
   // цели достижений
   goalSport: 10,
   goalRead: 10,
   goalCook: 10,
   goalNoFast: 1,
-  goalGems: 3,
-  goalLevel: 3,
 };
+// Уровней и бриллиантов недели больше нет (владелец 29.10.2026: не соревноваться друг с другом).
+// Старые ключи настроек (gem1..3, lvl*, badMonthGems, resetDay, goalGems, goalLevel) просто не читаются.
 
 /** Достижения с числом: в какой настройке лежит цель. */
-export const GOAL_KEYS = { sport: 'goalSport', read: 'goalRead', cook: 'goalCook', nofast: 'goalNoFast', gems: 'goalGems', level: 'goalLevel' };
+export const GOAL_KEYS = { sport: 'goalSport', read: 'goalRead', cook: 'goalCook', nofast: 'goalNoFast' };
 export const GOAL_MAX = 99;
 /** Пределы чисел в настройках: [от, до]. Меню и нормализация берут их отсюда. */
 export const RANGE = {
   weekGoal: [1, 14],
   cookGoal: [0, 31],
   limit: [0, 30],
-  gem3: [1, 100],
-  gem2: [1, 100],
-  gem1: [0, 100],
   overCost: [0, 3],
   cookCost: [0, 3],
-  badMonthGems: [0, 2],
-  lvlWeeks: [1, 8],
-  lvlGems: [1, 3],
-  lvlDownGems: [0, 2],
-  lvlDownWeeks: [1, 8],
-  lvlMax: [1, 50],
   coughDays: [1, 30],
   fitSport: [1, 14],
 };
@@ -145,14 +120,9 @@ export function normalize(settings) {
   const raw = settings || {};
   const s = { ...DEFAULTS, ...raw };
   for (const key of Object.keys(RANGE)) if (key in DEFAULTS) s[key] = clampInt(s[key], ...RANGE[key]);
-  // пороги бриллиантов не могут идти задом наперед
-  s.gem2 = Math.min(s.gem2, s.gem3);
-  s.gem1 = Math.min(s.gem1, s.gem2);
-  s.resetDay = isDay(s.resetDay) ? s.resetDay : '';
   s.start = isDay(raw.start) ? weekOf(raw.start) : '';
   s.createdDay = isDay(raw.createdDay) ? raw.createdDay : s.start;
   for (const key of Object.values(GOAL_KEYS)) s[key] = clampInt(s[key], 1, GOAL_MAX);
-  s.goalLevel = Math.min(s.goalLevel, s.lvlMax);
 
   s.goals = {};
   for (const kind of WEEKLY) {
@@ -188,15 +158,6 @@ const carried = (s, month, who, kind) => {
 
 // --- неделя: спорт и чтение -------------------------------------------------
 
-/** Бриллианты недели по среднему прогрессу: доля от 0 до 1. */
-export function weekGems(avg, s) {
-  const pct = Math.round(avg * 100);
-  if (pct >= s.gem3) return 3;
-  if (pct >= s.gem2) return 2;
-  if (pct >= s.gem1 && pct > 0) return 1;
-  return 0;
-}
-
 function countIn(events, from, to) {
   const counts = {};
   for (const kind of KINDS) counts[kind] = [0, 0];
@@ -204,35 +165,24 @@ function countIn(events, from, to) {
   return counts;
 }
 
-function summarizeWeek(s, events, w, today, cur) {
+/** Неделя: сколько чего сделано и набрана ли цель спорта и чтения у каждого. Без оценок. */
+function summarizeWeek(s, events, w, today) {
   const end = addDays(w, 6);
   const counts = countIn(events, w, end);
-  const progress = [0, 1].map((who) => {
-    const parts = WEEKLY.map((kind) => Math.min(1, counts[kind][who] / s.goals[kind][who]));
-    return parts.reduce((a, b) => a + b, 0) / parts.length;
-  });
-  const future = w > cur;
   return {
     start: w,
     end,
     index: diffDays(w, s.start) / 7 + 1,
     closed: end < today,
-    future,
     counts,
-    progress,
-    gems: progress.map((p) => (future ? null : weekGems(p, s))),
-    lvlUp: [false, false],
-    lvlDown: [false, false],
-    // в эту неделю закрылся месяц, и он был плохим: уровень снят за месяц
-    monthDown: [false, false],
-    badMonth: null,
+    met: [0, 1].map((who) => Object.fromEntries(WEEKLY.map((kind) => [kind, counts[kind][who] >= s.goals[kind][who]]))),
   };
 }
 
-/** Счетчики недели до первой: без целей и оценок. */
+/** Счетчики недели до первой. */
 export function preWeek(state, w) {
-  const end = addDays(w, 6);
-  return { start: w, end, pre: true, counts: countIn(live(state.events), w, end), gems: [null, null], lvlUp: [false, false], lvlDown: [false, false], monthDown: [false, false] };
+  const s = normalize(state.settings);
+  return { ...summarizeWeek(s, live(state.events), w, ''), pre: true };
 }
 
 // --- месяц: готовка и питание ------------------------------------------------
@@ -280,71 +230,18 @@ export function firstMonth(s) {
   return months.sort()[0] || null;
 }
 
-/** Месяц идет в уровень, если дневник начался не позже его первой недели или в нем есть перенос. */
+/** Месяц идет в достижения, если дневник начался не позже его первой недели или в нем есть перенос. */
 const monthCounts = (s, month) => s.start <= addDays(`${month}-01`, 6) || Boolean(s.carry[month]);
 
-// --- уровень ------------------------------------------------------------------
-
-/**
- * Все недели от первой до текущей.
- * Уровень растет на один за каждые lvlWeeks закрытых недель подряд, где бриллиантов не меньше lvlGems (lvlUp).
- * Плохая неделя (бриллиантов не больше lvlDownGems) обнуляет счет, lvlDownWeeks плохих подряд снимают уровень (lvlDown).
- * Закрылся месяц, и бриллиантов в нем не больше badMonthGems: уровень тоже падает (monthDown на неделе, где месяц кончился).
- * Уровень от -lvlMax до lvlMax. До resetDay уровень не двигается.
- */
+/** Все недели от первой до текущей: счетчики и выполнение целей. */
 export function timeline(state, today) {
   const s = normalize(state.settings);
   if (!s.start) return [];
   const cur = weekOf(today);
   const events = live(state.events);
-  const runs = [0, 0];
-  const badRuns = [0, 0];
-  const lvls = [0, 0];
   const out = [];
-  for (let w = s.start; w <= cur; w = addDays(w, 7)) {
-    const wk = summarizeWeek(s, events, w, today, cur);
-    out.push(wk);
-    if (!wk.closed) continue;
-    const counts = !s.resetDay || w >= weekOf(s.resetDay);
-    for (const who of [0, 1]) {
-      if (!counts) continue;
-      if (wk.gems[who] <= s.lvlDownGems) {
-        runs[who] = 0;
-        badRuns[who] += 1;
-        if (badRuns[who] >= s.lvlDownWeeks && lvls[who] > -s.lvlMax) {
-          wk.lvlDown[who] = true;
-          lvls[who] -= 1;
-          badRuns[who] = 0;
-        }
-      } else {
-        badRuns[who] = 0;
-        runs[who] = wk.gems[who] >= s.lvlGems ? runs[who] + 1 : 0;
-        if (runs[who] >= s.lvlWeeks && lvls[who] < s.lvlMax) {
-          wk.lvlUp[who] = true;
-          lvls[who] += 1;
-          runs[who] = 0;
-        }
-      }
-    }
-    // месяц, который кончился на этой неделе
-    const ended = wk.end.slice(0, 7) !== w.slice(0, 7) || wk.end === monthEnd(w.slice(0, 7)) ? w.slice(0, 7) : null;
-    if (ended && monthCounts(s, ended) && (!s.resetDay || monthEnd(ended) >= s.resetDay)) {
-      const ms = monthSummary(state, ended, today);
-      wk.badMonth = ended;
-      for (const who of [0, 1]) {
-        if (ms.gems[who] > s.badMonthGems || lvls[who] <= -s.lvlMax) continue;
-        wk.monthDown[who] = true;
-        lvls[who] -= 1;
-        runs[who] = 0;
-      }
-    }
-  }
+  for (let w = s.start; w <= cur; w = addDays(w, 7)) out.push(summarizeWeek(s, events, w, today));
   return out;
-}
-
-/** Уровень персонажа: сколько раз вырос минус сколько раз упал. */
-export function level(weeks, who) {
-  return weeks.reduce((n, wk) => n + (wk.lvlUp[who] ? 1 : 0) - (wk.lvlDown[who] ? 1 : 0) - (wk.monthDown[who] ? 1 : 0), 0);
 }
 
 // --- состояние персонажа и «вместе» --------------------------------------------
@@ -438,7 +335,7 @@ export function closedMonths(s, today) {
 }
 
 /** Достижения человека: have (сколько набрано), need (цель из настроек), got. */
-export function stickers(state, weeks, today) {
+export function stickers(state, today) {
   const s = normalize(state.settings);
   const events = live(state.events).filter((e) => e.day <= today);
   const months = closedMonths(s, today).map((m) => monthSummary(state, m, today));
@@ -451,8 +348,6 @@ export function stickers(state, weeks, today) {
       read: count('read'),
       cook: count('cook') + cookCarry,
       nofast: months.filter((ms) => FAST.every((id) => ms.used[id][who] === 0)).length,
-      gems: weeks.filter((w) => w.closed && w.gems[who] === GEMS).length,
-      level: level(weeks, who),
     };
     for (const [id, key] of Object.entries(GOAL_KEYS)) out.push({ id, who, have: have[id], need: s[key], got: have[id] >= s[key] });
   }

@@ -5,7 +5,6 @@ import {
   addMonths,
   dow,
   foodsOf,
-  level,
   monthEnd,
   monthSummary,
   monthWeeks,
@@ -18,7 +17,6 @@ import {
   stickers,
   timeline,
   together,
-  weekGems,
   weekOf,
 } from '../js/rules.js';
 
@@ -75,33 +73,27 @@ test('«не считаем» хранится как -1, свои цели и �
   assert.deepEqual(s.goals.cook, [0, 8]);
 });
 
-test('бриллианты недели по среднему прогрессу спорта и чтения', () => {
-  const s = normalize({});
-  assert.equal(weekGems(1, s), 3);
-  assert.equal(weekGems(2 / 3, s), 2);
-  assert.equal(weekGems(1 / 3, s), 1);
-  assert.equal(weekGems(1 / 6, s), 0);
-  assert.equal(weekGems(0, s), 0);
-});
-
-test('неделя: три спорта и три чтения дают три бриллианта, лишнее не добавляет', () => {
+test('неделя: счетчики спорта и чтения и выполнение цели, без оценок', () => {
   const state = make({ events: [...perfect(0, 0), [0, 'sport', day(6)], [1, 'sport', day(0)], [1, 'read', day(1)], [1, 'read', day(2)]] });
   const [wk] = timeline(state, day(7));
   assert.equal(wk.closed, true);
-  assert.equal(wk.counts.sport[0], 4);
-  assert.equal(wk.progress[0], 1); // 4 из 3 это все равно 100%
-  assert.deepEqual(wk.gems, [3, 1]); // у Нели спорт 1/3 и чтение 2/3: в среднем половина, это меньше 2/3
-});
-
-test('неделя идет: бриллианты уже видны, неделя не закрыта', () => {
-  const [wk] = timeline(make({ events: [[0, 'sport', day(0)]] }), day(2));
-  assert.equal(wk.closed, false);
-  assert.deepEqual(wk.gems, [0, 0]); // спорт 1/3, чтение 0/3: в среднем 17%
+  assert.deepEqual(wk.counts.sport, [4, 1]);
+  assert.deepEqual(wk.counts.read, [3, 2]);
+  assert.deepEqual(wk.met, [{ sport: true, read: true }, { sport: false, read: false }]);
+  assert.equal('gems' in wk, false); // бриллиантов недели больше нет
+  assert.equal('lvlUp' in wk, false); // и уровня тоже
 });
 
 test('свои цели: у кого цель спорта 1, тому хватает одной тренировки', () => {
   const state = make({ settings: { weekly: { sport: { goal: { p0: 1 } }, read: { goal: { p0: 1 } } } }, events: [[0, 'sport', day(0)], [0, 'read', day(0)]] });
-  assert.equal(timeline(state, day(1))[0].gems[0], 3);
+  assert.deepEqual(timeline(state, day(1))[0].met[0], { sport: true, read: true });
+});
+
+test('старые настройки уровня и бриллиантов недели не мешают', () => {
+  const state = make({ settings: { lvlWeeks: 1, lvlMax: 3, gem3: 50, resetDay: day(3), goalLevel: 2, goalGems: 4 }, events: perfect(0, 0) });
+  const weeks = timeline(state, day(14));
+  assert.equal(weeks.length, 3);
+  assert.equal(stickers(state, day(14)).length, 8);
 });
 
 test('месяц: лимиты, перебор и цель готовки', () => {
@@ -180,52 +172,6 @@ test('подсказка при отметке: будет столько из �
   assert.equal(bun.over, true);
 });
 
-test('уровень: две недели подряд на два бриллианта и больше поднимают уровень', () => {
-  const state = make({ events: [...perfect(0, 0), ...perfect(0, 1), ...perfect(1, 0)] });
-  const weeks = timeline(state, day(14));
-  assert.equal(weeks.length, 3);
-  assert.deepEqual(weeks[1].lvlUp, [true, false]);
-  assert.equal(level(weeks, 0), 1);
-  // у Нели вторая неделя пустая: ноль бриллиантов, уровень падает
-  assert.deepEqual(weeks[1].lvlDown, [false, true]);
-  assert.equal(level(weeks, 1), -1);
-});
-
-test('уровень: потолок и пол из настроек, обнуление', () => {
-  const lots = Array.from({ length: 6 }, (_, w) => perfect(0, w)).flat();
-  const capped = make({ settings: { lvlWeeks: 1, lvlMax: 3 }, events: lots });
-  assert.equal(level(timeline(capped, day(42)), 0), 3);
-  const floor = make({ settings: { lvlMax: 2 } });
-  assert.equal(level(timeline(floor, day(42)), 1), -2);
-  // обнулили с четвертой недели: раньше уровень не двигался
-  const reset = make({ settings: { lvlWeeks: 1, resetDay: day(21) }, events: lots });
-  assert.equal(level(timeline(reset, day(42)), 0), 3);
-});
-
-test('плохой месяц снимает уровень, когда месяц закрылся', () => {
-  // ноябрь: у Елисея четыре продукта сверх лимита и нет готовки, у Нели все в порядке
-  const nov = ['chips', 'shawarma', 'fastfood', 'chocolate'].map((k) => [0, k, '2026-11-05', { n: 2 }]);
-  const cook = [2, 5, 9, 12, 16].map((d) => [1, 'cook', `2026-11-${String(d).padStart(2, '0')}`]);
-  const weeksAll = Array.from({ length: 6 }, (_, w) => [...perfect(0, w), ...perfect(1, w)]).flat();
-  const state = make({ settings: { start: '2026-11-02', lvlWeeks: 8 }, events: [...nov, ...cook, ...weeksAll.map(([w, k, d]) => [w, k, addDays(d, 7)])] });
-  const before = timeline(state, '2026-11-30');
-  assert.equal(level(before, 0), 0); // ноябрь еще не закрыт
-  const after = timeline(state, '2026-12-08');
-  const wk = after.find((w) => w.badMonth === '2026-11');
-  assert.ok(wk);
-  assert.deepEqual(wk.monthDown, [true, false]);
-  assert.equal(level(after, 0), -1);
-  assert.equal(level(after, 1), 0);
-});
-
-test('октябрь с переносом считается в уровень, хотя первая неделя началась 26-го', () => {
-  const bad = { p0: { chips: 3, shawarma: 3, fastfood: 3 } };
-  const state = make({ settings: { carry: { '2026-10': bad }, lvlDownGems: -1 } });
-  const weeks = timeline(state, '2026-11-03');
-  assert.equal(weeks[0].badMonth, '2026-10');
-  assert.deepEqual(weeks[0].monthDown, [true, false]);
-});
-
 test('сегодня по Москве: 23:30 UTC это уже следующий день', () => {
   assert.equal(moscowDay(new Date('2026-10-28T20:59:00Z')), '2026-10-28');
   assert.equal(moscowDay(new Date('2026-10-28T21:00:00Z')), '2026-10-29');
@@ -302,14 +248,13 @@ test('возгласы: цель недели, цель месяца, лимит
   assert.equal(shoutFor(state, day(2), { targets: [0], kind: 'croissant', day: day(2) }), null); // не считает
 });
 
-test('достижения: спорт, чтение, готовка с переносом, месяц без фастфуда, бриллианты, уровень', () => {
+test('достижения: спорт, чтение, готовка с переносом, месяц без фастфуда', () => {
   const state = make({
     settings: { carry: { '2026-10': OCTOBER }, goalCook: 3 },
     events: [...perfect(0, 0), ...perfect(0, 1), [1, 'shawarma', '2026-11-04'], [0, 'cook', '2026-11-03']],
   });
   const today = '2026-12-02';
-  const weeks = timeline(state, today);
-  const st = (who, id) => stickers(state, weeks, today).find((x) => x.who === who && x.id === id);
+  const st = (who, id) => stickers(state, today).find((x) => x.who === who && x.id === id);
   assert.equal(st(0, 'sport').have, 6);
   assert.equal(st(0, 'read').have, 6);
   assert.equal(st(0, 'cook').have, 2); // 1 перенос + 1 отметка
@@ -317,7 +262,7 @@ test('достижения: спорт, чтение, готовка с пере
   assert.equal(st(1, 'cook').got, true);
   assert.equal(st(0, 'nofast').have, 2); // октябрь и ноябрь
   assert.equal(st(1, 'nofast').have, 1); // в ноябре шаурма
-  assert.equal(st(0, 'gems').have, 2);
-  assert.equal(st(0, 'level').have, level(weeks, 0));
-  assert.equal(stickers(state, weeks, today).length, 12);
+  assert.equal(st(0, 'gems'), undefined);
+  assert.equal(st(0, 'level'), undefined);
+  assert.equal(stickers(state, today).length, 8);
 });

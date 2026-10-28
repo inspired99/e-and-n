@@ -107,11 +107,6 @@ export function buildText(build) {
 
 export const nGems = (n) => `${n} ${plural(n, 'бриллиант', 'бриллианта', 'бриллиантов')}`;
 
-/** Из чего сложились бриллианты недели: спорт и чтение против цели. */
-export function weekWhy(wk, who, s) {
-  return ['sport', 'read'].map((k) => `${KIND[k].name} ${wk.counts[k][who]} из ${s.goals[k][who]}`).join(', ');
-}
-
 /** Из чего сложились бриллианты месяца: перебор и готовка. */
 export function monthWhy(ms, who) {
   const over = ms.over[who].length ? `перебор: ${ms.over[who].map((k) => KIND[k].name).join(', ')}` : 'питание в лимитах';
@@ -135,8 +130,6 @@ export const STICKER = {
   read: { name: 'чтение', how: 'Дни с чтением за все время.' },
   cook: { name: 'готовка', how: 'Готовка дома за все время, вместе с тем, что было до приложения.' },
   nofast: { name: 'без фастфуда', how: 'Закрытые месяцы без шаурмы, фастфуда и бургеров.' },
-  gems: { name: 'три бриллианта', how: 'Недели на три бриллианта.' },
-  level: { name: 'уровень', how: 'Уровень персонажа.' },
 };
 
 export const SYNC = {

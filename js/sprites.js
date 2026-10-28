@@ -299,24 +299,6 @@ const GEM_EMPTY = { K: '#b79d68', W: '#e7d2a4', C: '#e7d2a4', S: '#e7d2a4' };
 // --- наклейки 16x16 ---------------------------------------------------------
 
 const STICKERS = {
-  gems: [
-    '................',
-    '....KKKKKKKK....',
-    '...KWWCCCCCCK...',
-    '..KWWCCCCCCCSK..',
-    '.KWWCCCCCCCCSSK.',
-    '.KWCCCCCCCCCSSK.',
-    '.KCCCCCCCCCSSSK.',
-    '..KCCCCCCCSSSK..',
-    '...KCCCCCSSSK...',
-    '....KCCCCSSK....',
-    '.....KCCSSK.....',
-    '......KCSK......',
-    '.......KK.......',
-    '................',
-    '................',
-    '................',
-  ],
   sport: [
     '................',
     '................',
@@ -388,25 +370,6 @@ const STICKERS = {
     '..KXXXXXXXXXXK..',
     '...KXXXKKXXXK...',
     '....KKK..KKK....',
-    '................',
-  ],
-  // уровень: корона
-  level: [
-    '................',
-    '................',
-    '................',
-    '.K.....KK.....K.',
-    'KYK...KYYK...KYK',
-    'KYYK..KYYK..KYYK',
-    'KYYYKKYYYYKKYYYK',
-    'KYYYYYYYYYYYYYYK',
-    'KYYXYYYCYYYYXYYK',
-    'KYXXXYCCCYYXXXYK',
-    'KYYXYYYCYYYYXYYK',
-    'KYYYYYYYYYYYYYYK',
-    'KKKKKKKKKKKKKKKK',
-    '................',
-    '................',
     '................',
   ],
 };
