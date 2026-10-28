@@ -415,15 +415,16 @@ main > .scene {
 }
 
 /* поцелуй: сердце наверху комнаты, над головами персонажей */
+/* поцелуй: одно сердце без подписи, название в aria-label */
 .kiss-btn {
   position: absolute;
   top: var(--s2);
   left: 50%;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: var(--s1) 14px var(--s1) 10px;
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
   border: 2px solid var(--ink);
   border-radius: var(--r-btn);
   background: var(--paper);

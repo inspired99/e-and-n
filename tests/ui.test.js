@@ -187,7 +187,8 @@ test('нет ни уровня, ни бриллиантов, ни «вместе
 
 test('поцелуй: кнопка в комнате над персонажами и момент с сердцами', () => {
   const home = UI.page(model({}));
-  assert.match(home, /<div class="room"[^]*<button class="kiss-btn" type="button" data-act="kiss" data-key="kiss" aria-label="отправить поцелуй: Неля"><svg[^]*<span>поцелуй<\/span><\/button><\/div>/);
+  assert.match(home, /<div class="room"[^]*<button class="kiss-btn" type="button" data-act="kiss" data-key="kiss" aria-label="отправить поцелуй: Неля"><svg[^]*?<\/svg><\/button><\/div>/);
+  assert.doesNotMatch(home, /<span>поцелуй<\/span>/); // на кнопке только сердце
   const one = UI.kissMoment({ name: 'Елисей' });
   assert.match(one, /<div class="kiss-hearts" aria-hidden="true">/);
   assert.equal(one.split('class="kiss-heart"').length - 1, 10);

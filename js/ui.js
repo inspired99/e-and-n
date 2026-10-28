@@ -169,7 +169,7 @@ function board(m) {
 
 /** Поцелуй: сердце наверху комнаты, над головами, чтобы не задевать касание по персонажам. */
 function kissButton(m) {
-  return `<button class="kiss-btn" type="button" data-act="kiss" data-key="kiss" aria-label="отправить поцелуй: ${esc(m.players[m.other].name)}">${icon('heart')}<span>поцелуй</span></button>`;
+  return `<button class="kiss-btn" type="button" data-act="kiss" data-key="kiss" aria-label="отправить поцелуй: ${esc(m.players[m.other].name)}">${icon('heart', { scale: 3 })}</button>`;
 }
 
 function scene(m) {
