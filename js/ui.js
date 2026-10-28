@@ -2,9 +2,9 @@
 // Все пользовательские строки проходят через esc(). Состояние показываем картинкой,
 // но каждое число подписано словом.
 
-import { FOOD, GEMS, GOAL_KEYS, GOAL_MAX, GOOD, RANGE, WEEKLY, addDays, dow, foodsOf, isFood, monthWeeks, preview, qty, weekDays } from './rules.js';
+import { FOOD, GEMS, GOAL_KEYS, GOAL_MAX, GOOD, RANGE, WEEKLY, addDays, dow, isFood, monthWeeks, preview, qty, weekDays } from './rules.js';
 import * as C from './copy.js';
-import { LOOKS, gem, hero, icon, navIcon, prop, sticker } from './sprites.js';
+import { LOOKS, STATURE, gem, hero, heroTogether, icon, navIcon, prop, sticker } from './sprites.js';
 
 const { esc } = C;
 
@@ -92,7 +92,7 @@ const pending = (closed) => (closed ? '' : '<span class="gems-note">пока</sp
 
 // --- главная: общая комната и доска под ней ---------------------------------------
 
-/** Персонаж в комнате: касание открывает лист «одежда». */
+/** Персонаж в комнате: касание открывает лист «одежда». Неля рисуется чуть ниже ростом, подошвы на одном полу. */
 function roomHero(m, who) {
   const name = esc(m.players[who].name);
   const mood = m.moods[who];
@@ -106,21 +106,15 @@ function stat(kind, done, goal) {
   return `<div class="stat${met ? ' is-met' : ''}"><dt>${icon(kind)}<span>${C.KIND[kind].name}</span></dt><dd><b>${done}</b> из ${goal}</dd></div>`;
 }
 
-/** Плитка продукта: значок и «сколько / лимит». Сверх лимита красная, с крестиком. */
-function foodTile(m, ms, who, id, { act = true } = {}) {
-  const used = ms.used[id][who];
-  const limit = m.s.limits[id][who];
-  const over = used > limit;
-  const full = !over && used === limit;
-  const name = C.KIND[id].name;
-  const label = `${esc(m.players[who].name)}, ${name}: ${used} из ${limit}${over ? ', перебор' : full ? ', лимит выбран' : ''}`;
-  const cls = `tile${over ? ' is-over' : full ? ' is-full' : ''}`;
-  const inner = `<span class="tile-pic">${icon(id)}</span><span class="tile-n">${used} / ${limit}</span>`;
-  if (!act) return `<li><span class="${cls}" role="img" aria-label="${label}">${inner}</span></li>`;
-  return `<li><button class="${cls}" type="button" data-act="log-open" data-who="${who}" data-step="${id}" data-key="tile-${who}-${id}" aria-label="${label}. отметить">${inner}</button></li>`;
+/** Переключатель под комнатой: трекер или еда. */
+function boardSwitch(m) {
+  const btn = (v, label) =>
+    `<button class="seg-btn" type="button" aria-pressed="${m.board === v}" data-act="board" data-board="${v}" data-key="board-${v}">${label}</button>`;
+  return `<div class="seg seg-wide board-switch" role="group" aria-label="что показать под комнатой">${btn('tracker', 'трекер')}${btn('food', 'еда')}</div>`;
 }
 
-function board(m) {
+/** Трекер: неделя (спорт, чтение) и месяц (готовка), у каждого свой столбец. */
+function trackerBoard(m) {
   const wk = m.cur;
   const ms = m.thisMonth;
   const col = (who, body) => `<div class="col${who === m.me ? ' is-me' : ''}">${body}</div>`;
@@ -145,11 +139,7 @@ function board(m) {
       ),
     )
     .join('');
-  const food = [0, 1]
-    .map((who) => col(who, `<ul class="tiles" aria-label="${esc(m.players[who].name)}: питание за месяц">${foodsOf(m.s, who).map((id) => foodTile(m, ms, who, id)).join('')}</ul>`))
-    .join('');
-  return `<div class="board">
-    <div class="cols cols-names">${names}</div>
+  return `<div class="cols cols-names">${names}</div>
     <section class="group" aria-labelledby="g-week">
       <h2 class="group-title" id="g-week">неделя<span class="group-sub">${C.weekRange(m.curStart)}</span></h2>
       <div class="cols">${week}</div>
@@ -157,17 +147,52 @@ function board(m) {
     <section class="group" aria-labelledby="g-month">
       <h2 class="group-title" id="g-month">месяц<span class="group-sub">${C.monthName(m.today.slice(0, 7))}</span></h2>
       <div class="cols">${month}</div>
-    </section>
-    <section class="group" aria-labelledby="g-food">
-      <h2 class="group-title" id="g-food">питание<span class="group-sub">съедено / лимит</span></h2>
-      <div class="cols">${food}</div>
-    </section>
+    </section>`;
+}
+
+/**
+ * Строки таблицы еды: значок и название продукта, у каждого «съедено / лимит».
+ * Сверх лимита красным с крестиком, «не считаем» прочерком. В текущем месяце касание открывает отметку этого продукта.
+ */
+function foodRows(m, ms, current) {
+  const cell = (who, id) => {
+    const name = esc(m.players[who].name);
+    const limit = m.s.limits[id][who];
+    if (limit == null) return `<td><span class="nil" role="img" aria-label="${name}: не считаем"></span></td>`;
+    const used = ms.used[id][who];
+    const over = used > limit;
+    const text = `<span class="fc${over ? ' is-over' : used === limit ? ' is-full' : ''}">${used} / ${limit}</span>`;
+    const label = `${name}, ${C.KIND[id].name}: ${used} из ${limit}${over ? ', перебор' : used === limit ? ', лимит выбран' : ''}`;
+    if (!current) return `<td><span role="img" aria-label="${label}">${text}</span></td>`;
+    return `<td><button class="fcell" type="button" data-act="log-open" data-who="${who}" data-step="${id}" data-key="food-${who}-${id}" aria-label="${label}. отметить">${text}</button></td>`;
+  };
+  return FOOD.filter((id) => m.s.limits[id].some((l) => l != null))
+    .map((id) => `<tr><th scope="row"><span class="rh">${icon(id)}<span>${C.KIND[id].name}</span></span></th>${cell(0, id)}${cell(1, id)}</tr>`)
+    .join('');
+}
+
+/** Еда под комнатой: таблица текущего месяца, строка на продукт. */
+function foodBoard(m) {
+  const names = [0, 1].map((who) => `<th scope="col"${who === m.me ? ' class="is-me"' : ''}><span class="who-name">${esc(m.players[who].name)}</span></th>`).join('');
+  return `<section class="group group-food" aria-labelledby="g-food">
+      <h2 class="sr" id="g-food">еда за ${C.monthName(m.today.slice(0, 7))}: съедено и лимит</h2>
+      <table class="food food-board">
+        <thead><tr><th scope="col">${C.monthName(m.today.slice(0, 7))}</th>${names}</tr></thead>
+        <tbody>${foodRows(m, m.thisMonth, true)}</tbody>
+      </table>
+    </section>`;
+}
+
+function board(m) {
+  return `<div class="board">
+    ${boardSwitch(m)}
+    ${m.board === 'food' ? foodBoard(m) : trackerBoard(m)}
   </div>`;
 }
 
 function scene(m) {
   return `<section class="scene" aria-label="комната">
-    <div class="room">${roomHero(m, 0)}${roomHero(m, 1)}</div>
+    <div class="room" style="--stature: ${STATURE[1]}">${roomHero(m, 0)}${roomHero(m, 1)}</div>
     ${board(m)}
   </section>`;
 }
@@ -369,7 +394,7 @@ function versus(m) {
   const inGrid = monthWeeks(m.month);
   const weekGemsSum = [0, 1].map((who) => m.weeks.filter((w) => w.closed && inGrid.includes(w.start)).reduce((n, w) => n + w.gems[who], 0));
   const overs = [0, 1].map((who) => ms.over[who].length);
-  const head = [0, 1].map((who) => `<th scope="col">${hero(who, m.looks[who], 'idle', { size: 48 })}<span>${esc(m.players[who].name)}</span></th>`).join('');
+  const head = [0, 1].map((who) => `<th scope="col">${heroTogether(who, m.looks[who], 'idle', { size: 48 })}<span>${esc(m.players[who].name)}</span></th>`).join('');
   const gemsCells = [0, 1].map((who) => `<span class="gems${ms.closed ? '' : ' is-open'}" role="img" aria-label="${C.nGems(ms.gems[who])}${ms.closed ? '' : ' пока'}">${gemRow(ms.gems[who], true)}</span>`);
   return `<table class="versus">
     <thead><tr><th scope="col"><span class="sr">что сравниваем</span></th>${head}</tr></thead>
@@ -406,20 +431,8 @@ function stats(m) {
 function foodPage(m) {
   const ms = m.shownMonth;
   const current = m.month === m.today.slice(0, 7);
-  const cell = (who, id) => {
-    const limit = m.s.limits[id][who];
-    if (limit == null) return `<td class="is-off"><span class="sr">${esc(m.players[who].name)}: </span>не считаем</td>`;
-    const used = ms.used[id][who];
-    const over = used > limit;
-    const text = `<span class="fc${over ? ' is-over' : used === limit ? ' is-full' : ''}">${used} / ${limit}</span>`;
-    const label = `${esc(m.players[who].name)}, ${C.KIND[id].name}: ${used} из ${limit}${over ? ', перебор' : ''}`;
-    if (!current) return `<td><span role="img" aria-label="${label}">${text}</span></td>`;
-    return `<td><button class="fcell" type="button" data-act="log-open" data-who="${who}" data-step="${id}" data-key="food-${who}-${id}" aria-label="${label}. отметить">${text}</button></td>`;
-  };
-  const head = [0, 1].map((who) => `<th scope="col">${hero(who, m.looks[who], 'idle', { size: 48 })}<span>${esc(m.players[who].name)}</span></th>`).join('');
-  const rows = FOOD.filter((id) => m.s.limits[id].some((l) => l != null))
-    .map((id) => `<tr><th scope="row"><span class="rh">${icon(id)}<span>${C.KIND[id].name}</span></span></th>${cell(0, id)}${cell(1, id)}</tr>`)
-    .join('');
+  const head = [0, 1].map((who) => `<th scope="col">${heroTogether(who, m.looks[who], 'idle', { size: 48 })}<span>${esc(m.players[who].name)}</span></th>`).join('');
+  const rows = foodRows(m, ms, current);
   const cook = [0, 1].map((who) => `<td><span class="fc${ms.cook[who].met ? ' is-met' : ''}">${ms.cook[who].done} из ${ms.cook[who].goal}</span></td>`).join('');
   const gems = [0, 1].map((who) => `<td>${monthGems(m, ms, who)}</td>`).join('');
   return `<main id="main" class="page">
@@ -429,7 +442,7 @@ function foodPage(m) {
         <h2 class="page-title" id="food-title">${C.monthTitle(m.month)}</h2>
         ${monthNav(m)}
       </div>
-      <p class="hint food-hint">Съедено за месяц и лимит. Сверх лимита красным, каждый такой продукт снимает бриллиант месяца.</p>
+      <p class="hint food-hint">Съедено за месяц и лимит. Сверх лимита красным, каждый такой продукт снимает бриллиант месяца. Прочерк: этот продукт человек не считает.</p>
       <table class="food">
         <thead><tr><th scope="col"><span class="sr">продукт</span></th>${head}</tr></thead>
         <tbody>${rows}</tbody>
@@ -462,7 +475,7 @@ function rules(m) {
       ${item(`${icon('sport', { scale: 3 })}${icon('read', { scale: 3 })}`, 'неделя', `Спорт и чтение считаются с понедельника по воскресенье. Цель на неделю: спорт ${goals('sport')}, чтение ${goals('read')}. Сверх цели в счет не идет.`)}
       ${item(icon('cook', { scale: 3 }), 'месяц', `Готовка дома считается за месяц, цель ${goals('cook')}. Питание тоже по месяцам: у каждого свой лимит на каждый продукт и свой список того, что считаем.`)}
       ${item(chip('chocolate', 'is-over', ''), 'перебор', `Продукт сверх лимита красный, с крестиком. ${s.overCost ? `Каждый такой продукт снимает ${s.overCost > 1 ? `${s.overCost} бриллианта` : 'бриллиант'} месяца` : 'Бриллианты месяца он не снимает'}. Штрафов и отработок нет.`)}
-      ${item(`${hero(0, m.looks[0], 'idle', { size: 40 })}${hero(1, m.looks[1], 'idle', { size: 40 })}`, 'вместе', 'Оба отметили одно и то же полезное в один день: всплывает «вместе!», в итогах растет счетчик.')}
+      ${item(`${heroTogether(0, m.looks[0], 'idle', { size: 40 })}${heroTogether(1, m.looks[1], 'idle', { size: 40 })}`, 'вместе', 'Оба отметили одно и то же полезное в один день: всплывает «вместе!», в итогах растет счетчик.')}
     </ul>
     <section class="gem-key" aria-labelledby="gem-week-title">
       <h2 id="gem-week-title">бриллианты недели</h2>
@@ -570,32 +583,37 @@ export function logSheet(m, sel) {
       <span class="opt-note">${text}</span>
     </button>`;
   };
-  // еда в два шага: касание по продукту раскрывает выбор ×1..×6 под сеткой
+  // еда в два шага: касание по продукту раскрывает выбор ×1..×6 прямо под ним
   const foods = FOOD.filter((id) => targets.some((who) => m.s.limits[id][who] != null));
-  const foodTiles = foods
-    .map((id) => {
-      const { text, over } = noteText(id, targets);
-      return `<button class="food-opt${over ? ' is-over' : ''}" type="button" data-act="log" data-kind="${id}" data-key="log-${id}" aria-expanded="${sel.step === id}"
-        aria-label="${C.KIND[id].name}: ${text}">
-        <span class="food-opt-icon">${icon(id, { scale: 3 })}</span>
-        <span class="food-opt-name">${C.KIND[id].name}</span>
-      </button>`;
-    })
-    .join('');
-  let step = '';
-  if (sel.step && foods.includes(sel.step)) {
-    const id = sel.step;
+  const step = (id) => {
     const btns = QTY.map(
       (n) =>
         `<button class="seg-btn" type="button" data-act="log" data-kind="${id}" data-n="${n}" data-key="log-${id}-${n}" aria-label="${C.KIND[id].name}: ${n}">×${n}</button>`,
     ).join('');
-    const one = noteText(id, targets, 1);
-    step = `<div class="opt-step" role="group" aria-label="${C.KIND[id].name}: сколько">
-      <p class="opt-step-q">${icon(id)}${C.KIND[id].name}: сколько?</p>
+    return `<div class="opt-step" role="group" aria-label="${C.KIND[id].name}: сколько">
+      <p class="opt-step-q">сколько?</p>
       <div class="seg seg-qty">${btns}</div>
-      <p class="opt-step-note${one.over ? ' is-over' : ''}">×1: ${one.text}</p>
     </div>`;
-  }
+  };
+  const foodRow = (id) => {
+    const { text, over } = noteText(id, targets);
+    const open = sel.step === id;
+    return `<button class="opt opt-food${over ? ' is-over' : ''}" type="button" data-act="log" data-kind="${id}" data-key="log-${id}" aria-expanded="${open}">
+      <span class="opt-icon">${icon(id, { scale: 3 })}</span>
+      <span class="opt-name">${C.KIND[id].name}</span>
+      <span class="opt-note">${text}</span>
+    </button>${open ? step(id) : ''}`;
+  };
+  // полезное или еда: одна группа за раз, чтобы лист был коротким
+  const group = sel.group === 'food' || (sel.group == null && sel.step) ? 'food' : 'good';
+  const groupBtn = (v, label) =>
+    `<button class="seg-btn" type="button" aria-pressed="${group === v}" data-act="log-group" data-group="${v}" data-key="log-group-${v}">${label}</button>`;
+  const options =
+    group === 'food'
+      ? foods.length
+        ? `<div class="opts opts-food">${foods.map(foodRow).join('')}</div>`
+        : '<p class="hint opts-empty">Еду этому человеку не считаем.</p>'
+      : `<div class="opts">${GOOD.map(goodRow).join('')}</div>`;
   const logged = m.events.filter((e) => e.day === sel.day && targets.includes(e.who));
   const loggedList = logged.length
     ? `<section class="logged"><h3>уже отмечено</h3><ul>${logged
@@ -618,11 +636,9 @@ export function logSheet(m, sel) {
     <div class="seg" role="group" aria-label="день">${dayBtns}</div>
     ${sel.pick ? dayPicker(m, sel, targets) : ''}
     <div class="seg" role="group" aria-label="кому">${whoBtns}</div>
+    <div class="seg seg-wide log-groups" role="group" aria-label="что отмечаем">${groupBtn('good', 'полезное')}${groupBtn('food', 'еда')}</div>
     ${loggedList}
-    <h3 class="opts-title">полезное</h3>
-    <div class="opts">${GOOD.map(goodRow).join('')}</div>
-    <h3 class="opts-title">питание</h3>
-    ${foods.length ? `<div class="food-opts">${foodTiles}</div>${step}` : '<p class="hint">Питание у этого человека не считается.</p>'}`;
+    ${options}`;
 }
 
 /** Лист «одежда»: образы человека, выбранный нажат. */
@@ -804,7 +820,7 @@ export function welcome({ startDay, local, missing, fixed = false }) {
 
 export function whoAreYou(players, { demo = false, levels = [0, 0], looks = ['base', 'base'] } = {}) {
   const btn = (who) => `<button class="pick pick-btn" type="button" data-act="i-am" data-who="${who}">
-      ${hero(who, looks[who], 'idle', { size: 136 })}
+      ${heroTogether(who, looks[who], 'idle', { size: 136 })}
       <span class="pick-name">${esc(players[who].name)}</span>
       <span class="lvl">lvl ${levels[who]}</span>
     </button>`;

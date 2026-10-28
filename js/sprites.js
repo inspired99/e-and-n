@@ -460,6 +460,18 @@ export function hero(who, look = 'base', pose = 'idle', opts = {}) {
   return picture(heroName(who, look, pose), opts);
 }
 
+/**
+ * Рост рядом друг с другом. Неля нарисована выше Елисея (548 и 513 пикселей в листах),
+ * а вместе она около 90% его роста: ее картинка меньше, а коробка той же высоты, подошвы на одной линии.
+ * Масштабируется размер картинки, а не transform: без размытия.
+ */
+export const STATURE = [1, 0.84];
+
+export function heroTogether(who, look = 'base', pose = 'idle', { size = 72, ...opts } = {}) {
+  const px = Math.round(size * (STATURE[who] || 1));
+  return `<span class="stand" style="--stand: ${size}px">${picture(heroName(who, look, pose), { size: px, ...opts })}</span>`;
+}
+
 // Декор нарисован владельцем для fixgaz: assets/src/props.png, нарезка tools/sprites.mjs props.
 const PROPS = {
   lantern: [220, 440],

@@ -27,12 +27,13 @@ export function levelsOf(state, today) {
 /**
  * @param {object} state журнал: settings, events
  * @param {string} today 'YYYY-MM-DD' по Москве
- * @param {object} view состояние экрана: me, viewStart, month, mode, screen, status, pending, kind, build, room, fixed, stray
+ * @param {object} view состояние экрана: me, viewStart, month, mode, board, screen, status, pending, kind, build, room, fixed, stray
  * Возвращает модель; viewStart и month в ней уже приведены к допустимым границам.
  */
 export function buildModel(state, today, view) {
   const s = R.normalize(state.settings);
   const { me, mode = 'week', screen = 'home' } = view;
+  const board = view.board === 'food' ? 'food' : 'tracker';
   const curStart = R.weekOf(today);
   const firstView = today < s.start ? s.start : curStart;
   const weeks = R.timeline(state, today);
@@ -62,6 +63,7 @@ export function buildModel(state, today, view) {
     viewStart,
     view: weekAt(viewStart),
     mode,
+    board,
     canPrev: viewStart > minView,
     canNext: viewStart < maxView,
     month,

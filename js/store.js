@@ -36,6 +36,9 @@ export const prefs = {
   /** Вид дневника на этом устройстве: 'week' или 'month'. */
   view: () => ls.get('en:view'),
   setView: (view) => ls.set('en:view', view),
+  /** Что под комнатой на этом устройстве: 'tracker' или 'food'. */
+  board: () => ls.get('en:board'),
+  setBoard: (board) => ls.set('en:board', board),
 };
 
 /** Что это устройство знает о дневнике: последний снимок и неотправленные записи. Пусто, если не знает ничего. */

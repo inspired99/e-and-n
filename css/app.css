@@ -323,8 +323,6 @@ h2 {
   .opt:hover,
   .pick-btn:hover,
   .tab:hover,
-  .tile:hover,
-  .food-opt:hover,
   .look:hover {
     background: var(--tint);
   }
@@ -397,8 +395,10 @@ main > .scene {
   left: 8%;
 }
 
+/* Неля нарисована выше, рядом с ним она около 90% его роста: картинка уже, центр и пол те же */
 .room-hero-1 {
-  right: 8%;
+  right: calc(8% + 38% * (1 - var(--stature, 1)) / 2);
+  width: calc(38% * var(--stature, 1));
 }
 
 .room-hero:focus-visible {
@@ -410,7 +410,17 @@ main > .scene {
 }
 
 .board {
-  padding: var(--s3) var(--s4) var(--s4);
+  padding: var(--s3) var(--s4);
+}
+
+/* переключатель под комнатой и в листе: две равные половины */
+.seg.seg-wide {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.seg.board-switch {
+  margin: 0 0 var(--s2);
 }
 
 /* два столбца под персонажами: слева Елисей, справа Неля, между ними тонкая черта */
@@ -439,7 +449,7 @@ main > .scene {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--s1) var(--s2);
-  font-size: var(--text-lg);
+  font-size: 1.0625rem;
   font-weight: 600;
   line-height: 1.3;
 }
@@ -457,9 +467,15 @@ main > .scene {
 
 /* группа доски: заголовок пиксельным шрифтом, справа период словами */
 .group {
-  margin-top: var(--s3);
-  padding-top: var(--s3);
+  margin-top: var(--s2);
+  padding-top: var(--s2);
   border-top: 1px solid var(--line-strong);
+}
+
+.group-food {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
 }
 
 .group-title {
@@ -467,7 +483,7 @@ main > .scene {
   align-items: baseline;
   justify-content: space-between;
   gap: var(--s3);
-  margin-bottom: var(--s2);
+  margin-bottom: 2px;
   font-size: 0.75rem;
   line-height: 1.6;
 }
@@ -489,7 +505,7 @@ main > .scene {
   align-items: center;
   justify-content: space-between;
   gap: var(--s2);
-  min-height: 36px;
+  min-height: 30px;
 }
 
 .stat dt,
@@ -527,58 +543,13 @@ main > .scene {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--s1);
-  min-height: 32px;
+  min-height: 28px;
 }
 
 .gems-line .gems-note {
   margin-left: var(--s1);
 }
 
-/* плитки питания: по три в ряд, значок и «съедено / лимит» */
-.tiles {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.tile {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-  width: 100%;
-  min-height: 52px;
-  padding: 6px 0 var(--s1);
-  border: 2px solid var(--line-strong);
-  border-radius: var(--r-in);
-  background: var(--white);
-  color: var(--ink);
-}
-
-.tile-n {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  line-height: 1.2;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-/* лимит выбран: рамка чернилами */
-.tile.is-full {
-  border-color: var(--ink);
-}
-
-/* перебор: красная рамка и крестик в углу, как у отметки в дневнике */
-.tile.is-over {
-  border-color: var(--foul);
-  background: var(--foul-tint);
-}
-
-.tile.is-over .tile-n {
-  color: var(--foul-deep);
-}
-
-.tile.is-over::after,
 .chip.is-over::after,
 .fc.is-over::after {
   content: '';
@@ -591,10 +562,6 @@ main > .scene {
   background: var(--foul)
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' shape-rendering='crispEdges'%3E%3Cpath fill='%23fbf1d8' d='M1 1h1v1H1zM5 1h1v1H5zM2 2h1v1H2zM4 2h1v1H4zM3 3h1v1H3zM2 4h1v1H2zM4 4h1v1H4zM1 5h1v1H1zM5 5h1v1H5z'/%3E%3C/svg%3E")
     center / 14px 14px no-repeat;
-}
-
-.tile:active:not(:disabled) {
-  transform: translateY(2px);
 }
 
 /* --- дневник --------------------------------------------------------------- */
@@ -902,8 +869,9 @@ main > .week {
   width: 44%;
 }
 
-.versus thead .pic {
-  margin: 0 auto -2px;
+.versus thead .stand {
+  display: flex;
+  margin-bottom: -2px;
 }
 
 .versus thead span {
@@ -1234,8 +1202,9 @@ main > .week {
   width: 40%;
 }
 
-.food thead .pic {
-  margin: 0 auto -2px;
+.food thead .stand {
+  display: flex;
+  margin-bottom: -2px;
 }
 
 .food thead span {
@@ -1315,9 +1284,54 @@ main > .week {
   color: var(--good);
 }
 
-.food td.is-off {
+/* «не считаем»: прочерк, нарисованный линией */
+.nil {
+  display: inline-block;
+  width: 14px;
+  height: 2px;
+  vertical-align: middle;
+  background: var(--line-strong);
+}
+
+/* еда под комнатой: та же таблица, плотнее */
+.food-board {
+  margin-top: 0;
+}
+
+.food-board thead th {
+  padding-bottom: 2px;
+  font-size: var(--text-base);
+}
+
+.food-board thead th:first-child {
+  width: 44%;
   font-size: var(--text-sm);
+  font-weight: 400;
+  text-align: left;
   color: var(--muted);
+}
+
+.food-board thead th.is-me .who-name {
+  text-decoration: underline;
+  text-decoration-color: var(--marker);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 5px;
+}
+
+.food-board .rh {
+  min-height: 44px;
+}
+
+.food-board .fc {
+  font-size: var(--text-base);
+}
+
+/* рост рядом друг с другом: коробка одной высоты, картинка внизу по центру */
+.stand {
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: var(--stand);
 }
 
 /* --- правила ------------------------------------------------------------------ */
@@ -1574,14 +1588,15 @@ ol.rule-list .rule h2::before {
   color: var(--muted);
 }
 
-/* второй шаг отметки еды: сколько штук, раскрывается под сеткой продуктов */
+/* второй шаг отметки еды: сколько штук, раскрывается прямо под продуктом */
 .opt-step {
   display: grid;
   gap: var(--s2);
-  margin-top: var(--s2);
+  margin: calc(-1 * var(--s2)) 0 0;
   padding: var(--s3);
-  border: 3px solid var(--ink);
-  border-radius: var(--r-card);
+  border: 2px solid var(--ink);
+  border-top: 0;
+  border-radius: 0 0 var(--r-card) var(--r-card);
   background: var(--white);
 }
 
@@ -1606,59 +1621,31 @@ ol.rule-list .rule h2::before {
   color: var(--foul-deep);
 }
 
-/* заголовки групп в листе «отметить» */
-.opts-title {
-  margin-top: var(--s5);
-  font-size: var(--text-sm);
+/* «полезное | еда» в листе: под днем и «кому» */
+.log-groups {
+  margin-top: var(--s3);
+}
+
+.opts-empty {
+  margin-top: var(--s4);
+}
+
+/* перебор будет уже с одной штуки: подсказка красным */
+.opt.is-over .opt-note {
   font-weight: 500;
-  color: var(--muted);
+  color: var(--foul-deep);
 }
 
-.opts-title + .opts {
-  margin-top: var(--s2);
+.opt-food {
+  min-height: 56px;
+  padding-block: 6px;
 }
 
-/* продукты в листе: сетка по три, касание раскрывает число */
-.food-opts {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--s2);
-  margin-top: var(--s2);
-}
-
-.food-opt {
-  display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: var(--s1);
-  min-height: 76px;
-  padding: var(--s2) var(--s1);
-  border: 2px solid var(--ink);
-  border-radius: var(--r-card);
-  background: var(--white);
-  box-shadow: var(--drop-btn);
-  color: var(--ink);
-}
-
-.food-opt-icon {
-  display: grid;
-  place-items: center;
-}
-
-.food-opt-name {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-.food-opt[aria-expanded='true'] {
-  border-width: 3px;
+/* раскрытый продукт: выбор числа прилегает снизу */
+.opt[aria-expanded='true'] {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
   background: var(--tint);
-  box-shadow: none;
-}
-
-.food-opt:active {
-  transform: translateY(3px);
   box-shadow: none;
 }
 

@@ -28,6 +28,7 @@ let screen = 'home'; // home | stats | food | rules
 let homeScroll = 0;
 let viewStart = null;
 let mode = prefs.view() === 'month' ? 'month' : 'week'; // вид дневника на главной
+let boardTab = prefs.board() === 'food' ? 'food' : 'tracker'; // что под комнатой: трекер или еда, запоминается на устройстве
 let month = null; // месяц на экранах итогов и питания, 'YYYY-MM'
 let sheetState = null;
 let undo = null;
@@ -49,7 +50,7 @@ function defaultStart(day) {
 // --- модель ------------------------------------------------------------------
 
 function model() {
-  const view = { me, viewStart, month, mode, screen, status: store.status, pending: store.pending, kind: store.kind, build: BUILD, room: store.room, fixed: Boolean(ROOM), stray: stray ? stray.slice(0, 4) : '' };
+  const view = { me, viewStart, month, mode, board: boardTab, screen, status: store.status, pending: store.pending, kind: store.kind, build: BUILD, room: store.room, fixed: Boolean(ROOM), stray: stray ? stray.slice(0, 4) : '' };
   shownDay = today();
   const built = buildModel(store.state, shownDay, view);
   // границы недели и месяца приводит модель, запоминаем приведенные значения
@@ -197,7 +198,9 @@ const actions = {
   'log-open'(el) {
     const m = model();
     const who = el.dataset.who != null ? Number(el.dataset.who) : me;
-    openSheet({ type: 'log', day: el.dataset.day || m.today, who, step: el.dataset.step || null });
+    // со строки еды лист открывается на еде, и этот продукт уже раскрыт
+    const step = el.dataset.step || null;
+    openSheet({ type: 'log', day: el.dataset.day || m.today, who, step, group: step ? 'food' : 'good' });
     if (el.dataset.step) sheetBody.querySelector('.opt-step')?.scrollIntoView({ block: 'nearest' });
   },
   'log-day'(el) {
@@ -209,6 +212,11 @@ const actions = {
   },
   'log-pick'() {
     sheetState.pick = !sheetState.pick;
+    keepFocus(() => renderSheet(model()));
+  },
+  'log-group'(el) {
+    sheetState.group = el.dataset.group === 'food' ? 'food' : 'good';
+    sheetState.step = null;
     keepFocus(() => renderSheet(model()));
   },
   'log-who'(el) {
@@ -274,6 +282,11 @@ const actions = {
     const write = (v) => store.write([{ path: `settings/looks/p${who}`, value: v }]);
     write(look);
     toast(`образ: ${C.LOOK[who][look]}`, () => write(was));
+  },
+  board(el) {
+    boardTab = el.dataset.board === 'food' ? 'food' : 'tracker';
+    prefs.setBoard(boardTab);
+    render();
   },
   'diary-mode'(el) {
     mode = el.dataset.mode === 'month' ? 'month' : 'week';
@@ -491,14 +504,17 @@ function boot() {
     store = createStore({ room: 'demo', adapter: memoryAdapter(demoState(today())), persist: false });
     const who = params.get('me');
     if (who === '0' || who === '1') me = Number(who);
-    // в примере можно открыть нужный экран ссылкой: ?demo&me=0&open=stats|food|rules|log|look|menu|goal, &view=month включает месяц
+    // в примере можно открыть нужный экран ссылкой: ?demo&me=0&open=stats|food|rules|log|look|menu|goal, &view=month включает месяц,
+    // &board=food показывает еду под комнатой, &group=food открывает лист «отметить» на еде, &step=bun раскрывает продукт
     const open = params.get('open');
     if (['stats', 'food', 'rules'].includes(open)) screen = open;
     if (open === 'goal') screen = 'stats';
     if (['week', 'month'].includes(params.get('view'))) mode = params.get('view');
+    if (['tracker', 'food'].includes(params.get('board'))) boardTab = params.get('board');
     if (me != null && ['log', 'menu', 'look', 'goal'].includes(open)) {
       const day = today();
-      const state = { log: { type: 'log', day, who: me, step: params.get('step') }, look: { type: 'look', who: me }, menu: { type: 'menu' }, goal: { type: 'goal', id: 'sport' } }[open];
+      const step = params.get('step');
+      const state = { log: { type: 'log', day, who: me, step, group: step || params.get('group') === 'food' ? 'food' : 'good' }, look: { type: 'look', who: me }, menu: { type: 'menu' }, goal: { type: 'goal', id: 'sport' } }[open];
       queueMicrotask(() => openSheet(state));
     }
   } else {

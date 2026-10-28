@@ -21,17 +21,43 @@ test('главная: общая комната, оба персонажа, не
       assert.equal(html.split('class="room-hero ').length - 1, 2); // оба в одной комнате
       assert.match(html, /data-act="look-open" data-who="0"[^]*data-act="look-open" data-who="1"/);
       assert.match(html, mode === 'week' ? /class="diary"/ : /class="cal"/);
-      assert.match(html, /id="g-week"[^]*id="g-month"[^]*id="g-food"/);
+      assert.match(html, /id="g-week"[^]*id="g-month"/);
     }
   }
   const html = UI.page(model({}));
   assert.match(html, /src="assets\/sprites\/elisey-sport-fit\.webp"/); // образ из настроек, спорт на неделе
   assert.match(html, /src="assets\/sprites\/nelya-casual-cough\.webp"/); // давно без спорта
-  // плитки питания: у Елисея нет круассанов, у Нели нет сырков, шоколад Нели сверх лимита
-  assert.match(html, /data-key="tile-1-chocolate"[^>]*aria-label="Неля, шоколад: 2 из 1, перебор/);
-  assert.match(html, /class="tile is-over"[^>]*data-who="1" data-step="chocolate"/);
-  assert.doesNotMatch(html, /data-key="tile-0-croissant"/);
-  assert.doesNotMatch(html, /data-key="tile-1-curd"/);
+});
+
+test('под комнатой переключатель: трекер без еды, еда таблицей с названиями', () => {
+  const tracker = UI.page(model({}));
+  assert.match(tracker, /aria-pressed="true" data-act="board" data-board="tracker"/);
+  assert.match(tracker, /aria-pressed="false" data-act="board" data-board="food"/);
+  assert.match(tracker, /id="g-week"[^]*id="g-month"/);
+  assert.doesNotMatch(tracker, /id="g-food"|class="food food-board"/);
+  const food = UI.page(model({ board: 'food' }));
+  clean(food);
+  assert.match(food, /aria-pressed="true" data-act="board" data-board="food"/);
+  assert.doesNotMatch(food, /id="g-week"/);
+  assert.match(food, /class="food food-board"/);
+  // строка на продукт: значок и название рядом
+  for (const name of ['чипсы', 'шаурма', 'фастфуд', 'бургеры', 'булочки', 'круассаны', 'шоколад', 'лепешка', 'сырки']) {
+    assert.match(food, new RegExp(`<span class="rh"><svg[^]*?</svg><span>${name}</span></span>`), name);
+  }
+  // перебор красным с крестиком, «не считаем» прочерком, касание открывает отметку продукта
+  assert.match(food, /data-who="1" data-step="chocolate" data-key="food-1-chocolate" aria-label="Неля, шоколад: 2 из 1, перебор. отметить"><span class="fc is-over">2 \/ 1</);
+  assert.match(food, /class="nil" role="img" aria-label="Елисей: не считаем"/);
+  assert.match(food, /class="nil" role="img" aria-label="Неля: не считаем"/);
+});
+
+test('рядом Неля около 90% роста Елисея: в комнате, на выборе и в шапках таблиц', () => {
+  assert.match(UI.page(model({})), /class="room" style="--stature: 0\.84"/);
+  const who = UI.whoAreYou([{ name: 'Елисей' }, { name: 'Неля' }]);
+  assert.match(who, /class="stand" style="--stand: 136px"><img[^>]*elisey-base-idle\.webp" width="136"/);
+  assert.match(who, /class="stand" style="--stand: 136px"><img[^>]*nelya-base-idle\.webp" width="114"/);
+  assert.match(UI.page(model({ screen: 'stats' })), /nelya-casual-idle\.webp" width="40"/);
+  // в листе «одежда» она одна: в полный размер
+  assert.match(UI.lookSheet(model({}), { who: 1 }), /nelya-base-idle\.webp" width="96"/);
 });
 
 test('прошлая неделя и пустой дневник до первой недели', () => {
@@ -85,21 +111,33 @@ test('листы: отметить, одежда, меню, достижения
   assert.match(sheets[6], /data-path="goalSport"/);
 });
 
-test('отметить: полезное одним касанием, еда в два шага, у записи число правится', () => {
+test('отметить: полезное или еда по очереди, еда с названиями и в два шага', () => {
   const html = UI.logSheet(model({ me: 1 }), { day: TODAY, who: 1 });
+  // по умолчанию полезное, еды в листе нет
+  assert.match(html, /aria-pressed="true" data-act="log-group" data-group="good"/);
   assert.match(html, /data-act="log" data-kind="sport" data-key="log-sport"/);
-  assert.doesNotMatch(html, /data-kind="chocolate" data-n=/); // выбор числа еще не раскрыт
-  assert.doesNotMatch(html, /data-kind="curd"/); // Неля сырки не считает
+  assert.doesNotMatch(html, /data-kind="bun"/);
+  // переключатель стоит сразу под днем и «кому»
+  assert.ok(html.indexOf('aria-label="кому"') < html.indexOf('data-act="log-group"'));
+  assert.ok(html.indexOf('data-act="log-group"') < html.indexOf('class="logged"'));
+  const food = UI.logSheet(model({ me: 1 }), { day: TODAY, who: 1, group: 'food' });
+  clean(food);
+  assert.doesNotMatch(food, /data-kind="sport"/);
+  assert.match(food, /data-kind="bun" data-key="log-bun" aria-expanded="false">[^]*?<span class="opt-name">булочки<\/span>/);
+  assert.doesNotMatch(food, /data-kind="chocolate" data-n=/); // выбор числа еще не раскрыт
+  assert.doesNotMatch(food, /data-kind="curd"/); // Неля сырки не считает
+  // со строки еды: лист открывается на еде, продукт раскрыт, ×1..×6 прямо под ним
   const open = UI.logSheet(model({ me: 1 }), { day: TODAY, who: 1, step: 'bun' });
+  assert.match(open, /aria-pressed="true" data-act="log-group" data-group="food"/);
   assert.equal(open.split('data-kind="bun" data-n=').length - 1, 6);
-  assert.match(open, /data-kind="bun"[^>]*aria-expanded="true"/);
+  assert.match(open, /data-kind="bun" data-key="log-bun" aria-expanded="true">[^]*?<\/button><div class="opt-step"/);
   // сегодня у Нели шоколад ×2: в «уже отмечено» шесть кнопок числа и пометка перебора
   assert.equal(html.split('data-act="set-qty"').length - 1, 6);
   assert.match(html, /aria-pressed="true" data-act="set-qty"[^>]*data-n="2"/);
   assert.match(html, /перебор/);
   assert.ok(html.indexOf('class="logged"') < html.indexOf('class="opts"'));
   // обоим: еда, которую считает хотя бы один
-  const both = UI.logSheet(model({}), { day: TODAY, who: 'both' });
+  const both = UI.logSheet(model({}), { day: TODAY, who: 'both', group: 'food' });
   assert.match(both, /data-kind="curd"/);
   assert.match(both, /data-kind="croissant"/);
 });
@@ -154,8 +192,9 @@ test('настоящий дневник с переносом октября: ш
   };
   const html = UI.page(buildModel(real, TODAY, { me: 0, kind: 'firebase', status: 'online', fixed: true }));
   clean(html);
-  assert.match(html, /aria-label="Неля, шоколад: 2 из 1, перебор/);
-  assert.match(html, /aria-label="Елисей, сырки: 3 из 5/);
+  const food = UI.page(buildModel(real, TODAY, { me: 0, kind: 'firebase', status: 'online', fixed: true, board: 'food' }));
+  assert.match(food, /aria-label="Неля, шоколад: 2 из 1, перебор/);
+  assert.match(food, /aria-label="Елисей, сырки: 3 из 5/);
   assert.match(html, /<span>готовка<\/span><\/dt><dd><b>1<\/b> из 5[^]*<span>готовка<\/span><\/dt><dd><b>4<\/b> из 5/);
   // утро: никто ничего не отметил, оба спят
   assert.equal(html.split('-sleep.webp').length - 1, 2);
