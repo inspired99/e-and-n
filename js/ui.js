@@ -363,7 +363,7 @@ function versus(m) {
   const row = (pic, label, values, lowerWins, cells) => {
     const best = lowerWins == null || values[0] === values[1] ? -1 : (values[0] < values[1]) === lowerWins ? 0 : 1;
     const tds = (cells || values).map((v, who) => `<td class="${who === best ? 'is-better' : ''}">${v}</td>`).join('');
-    return `<tr><th scope="row">${pic}<span>${label}</span></th>${tds}</tr>`;
+    return `<tr><th scope="row"><span class="rh">${pic}<span>${label}</span></span></th>${tds}</tr>`;
   };
   const count = (kind) => [0, 1].map((who) => m.events.filter((e) => e.kind === kind && e.who === who && e.day.slice(0, 7) === m.month).length);
   const inGrid = monthWeeks(m.month);
@@ -418,7 +418,7 @@ function foodPage(m) {
   };
   const head = [0, 1].map((who) => `<th scope="col">${hero(who, m.looks[who], 'idle', { size: 48 })}<span>${esc(m.players[who].name)}</span></th>`).join('');
   const rows = FOOD.filter((id) => m.s.limits[id].some((l) => l != null))
-    .map((id) => `<tr><th scope="row">${icon(id)}<span>${C.KIND[id].name}</span></th>${cell(0, id)}${cell(1, id)}</tr>`)
+    .map((id) => `<tr><th scope="row"><span class="rh">${icon(id)}<span>${C.KIND[id].name}</span></span></th>${cell(0, id)}${cell(1, id)}</tr>`)
     .join('');
   const cook = [0, 1].map((who) => `<td><span class="fc${ms.cook[who].met ? ' is-met' : ''}">${ms.cook[who].done} из ${ms.cook[who].goal}</span></td>`).join('');
   const gems = [0, 1].map((who) => `<td>${monthGems(m, ms, who)}</td>`).join('');
@@ -434,8 +434,8 @@ function foodPage(m) {
         <thead><tr><th scope="col"><span class="sr">продукт</span></th>${head}</tr></thead>
         <tbody>${rows}</tbody>
         <tfoot>
-          <tr><th scope="row">${icon('cook')}<span>готовка</span></th>${cook}</tr>
-          <tr><th scope="row">${gem(true)}<span>бриллианты${ms.closed ? '' : ', пока'}</span></th>${gems}</tr>
+          <tr><th scope="row"><span class="rh">${icon('cook')}<span>готовка</span></span></th>${cook}</tr>
+          <tr><th scope="row"><span class="rh">${gem(true)}<span>бриллианты${ms.closed ? '' : ', пока'}</span></span></th>${gems}</tr>
         </tfoot>
       </table>
       ${ms.carry ? `<p class="hint">В этом месяце учтено и то, что было до приложения.</p>` : ''}
@@ -452,7 +452,9 @@ function rules(m) {
   const keyRow = (n, text) => `<li><span class="gems">${gemRow(n)}</span><span>${text}</span></li>`;
   const goals = (k) => (s.goals[k][0] === s.goals[k][1] ? `по ${s.goals[k][0]}` : `${a} ${s.goals[k][0]}, ${b} ${s.goals[k][1]}`);
   const lvlUp = s.lvlWeeks > 1 ? `за каждые ${C.nWeeks(s.lvlWeeks)} подряд, где бриллиантов ${s.lvlGems} или больше` : `за каждую неделю, где бриллиантов ${s.lvlGems} или больше`;
-  const lvlDown = s.lvlDownWeeks > 1 ? `${C.nWeeks(s.lvlDownWeeks)} подряд, где бриллиантов ${s.lvlDownGems} или меньше,` : `неделя, где бриллиантов ${s.lvlDownGems} или меньше,`;
+  const weakWeek = s.lvlDownGems ? `бриллиантов ${s.lvlDownGems} или меньше` : 'нет ни одного бриллианта';
+  const lvlDown = s.lvlDownWeeks > 1 ? `за ${C.nWeeks(s.lvlDownWeeks)} подряд, где ${weakWeek}` : `за неделю, где ${weakWeek}`;
+  const weakMonth = s.badMonthGems ? `бриллиантов ${s.badMonthGems} или меньше` : 'не осталось ни одного бриллианта';
   return `<main id="main" class="page">
     <section class="rules-panel">
     <div class="rules-head"><h1 class="page-title">правила</h1>${prop('lantern', 76)}</div>
@@ -460,7 +462,7 @@ function rules(m) {
       ${item(`${icon('sport', { scale: 3 })}${icon('read', { scale: 3 })}`, 'неделя', `Спорт и чтение считаются с понедельника по воскресенье. Цель на неделю: спорт ${goals('sport')}, чтение ${goals('read')}. Сверх цели в счет не идет.`)}
       ${item(icon('cook', { scale: 3 }), 'месяц', `Готовка дома считается за месяц, цель ${goals('cook')}. Питание тоже по месяцам: у каждого свой лимит на каждый продукт и свой список того, что считаем.`)}
       ${item(chip('chocolate', 'is-over', ''), 'перебор', `Продукт сверх лимита красный, с крестиком. ${s.overCost ? `Каждый такой продукт снимает ${s.overCost > 1 ? `${s.overCost} бриллианта` : 'бриллиант'} месяца` : 'Бриллианты месяца он не снимает'}. Штрафов и отработок нет.`)}
-      ${item(chip('sport', 'is-good', ''), 'вместе', 'Оба отметили одно и то же полезное в один день: всплывает «вместе!», в итогах растет счетчик.')}
+      ${item(`${hero(0, m.looks[0], 'idle', { size: 40 })}${hero(1, m.looks[1], 'idle', { size: 40 })}`, 'вместе', 'Оба отметили одно и то же полезное в один день: всплывает «вместе!», в итогах растет счетчик.')}
     </ul>
     <section class="gem-key" aria-labelledby="gem-week-title">
       <h2 id="gem-week-title">бриллианты недели</h2>
@@ -478,7 +480,7 @@ function rules(m) {
     </section>
     <section class="gem-key" aria-labelledby="lvl-title">
       <h2 id="lvl-title">уровень</h2>
-      <p class="key-note">Начинается с lvl 0 и растет на один ${lvlUp}, до lvl ${s.lvlMax}. Падает на один, если ${lvlDown} или если закрылся месяц, где бриллиантов ${s.badMonthGems} или меньше. Может уйти в минус, до lvl -${s.lvlMax}.</p>
+      <p class="key-note">Начинается с lvl 0 и растет на один ${lvlUp}, до lvl ${s.lvlMax}. Падает на один ${lvlDown}, и за закрытый месяц, где ${weakMonth}. Может уйти в минус, до lvl -${s.lvlMax}.</p>
     </section>
     <section class="gem-key" aria-labelledby="pose-title">
       <h2 id="pose-title">персонажи</h2>
@@ -575,7 +577,7 @@ export function logSheet(m, sel) {
       const { text, over } = noteText(id, targets);
       return `<button class="food-opt${over ? ' is-over' : ''}" type="button" data-act="log" data-kind="${id}" data-key="log-${id}" aria-expanded="${sel.step === id}"
         aria-label="${C.KIND[id].name}: ${text}">
-        <span class="opt-icon">${icon(id, { scale: 3 })}</span>
+        <span class="food-opt-icon">${icon(id, { scale: 3 })}</span>
         <span class="food-opt-name">${C.KIND[id].name}</span>
       </button>`;
     })
@@ -684,7 +686,7 @@ export function menuSheet(m) {
     </section>
     <section class="set">
       <h3>лимиты на месяц</h3>
-      <p class="hint">Минус от нуля значит «этому не считаем»: продукт пропадает из плиток и из листа «отметить».</p>
+      <p class="hint">Ниже нуля стоит «не считаем»: продукт пропадает из плиток и из листа «отметить».</p>
       ${limits}
     </section>
     <section class="set">
