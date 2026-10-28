@@ -73,10 +73,6 @@ export function buildModel(state, today, view) {
     looks: looksOf(state),
     events,
     moods: [0, 1].map((who) => R.mood(state, who, today)),
-    together: {
-      month: R.together(state, `${month}-01`, R.monthEnd(month) < today ? R.monthEnd(month) : today).length,
-      all: R.together(state, '0000-01-01', today).length,
-    },
     screen,
     stickers: R.stickers(state, today),
     status: view.status || 'local',

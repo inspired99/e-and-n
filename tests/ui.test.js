@@ -80,9 +80,8 @@ test('итоги, питание и правила', () => {
   assert.equal(stats.split('class="cal"').length - 1, 2);
   assert.equal(stats.split('data-act="goal-open"').length - 1, 8); // четыре достижения у каждого
   assert.doesNotMatch(stats, /is-better|сравн/); // месяц на двоих, без «кто лучше»
-  assert.match(stats, /вместе: \d+ раз/);
   const food = UI.page(model({ screen: 'food' }));
-  assert.equal(food.split('<tr><th scope="row">').length - 1, FOOD.length + 2); // продукты, готовка, бриллианты
+  assert.equal(food.split('<tr><th scope="row">').length - 1, FOOD.length + 1); // продукты и готовка
   assert.match(food, /не считаем/);
   assert.match(food, /class="fc is-over">2 \/ 1</);
   // прошлый месяц смотрится без кнопок
@@ -143,39 +142,53 @@ test('отметить: полезное или еда по очереди, ед
   assert.match(both, /data-kind="croissant"/);
 });
 
-test('меню: все числа правил и лимит «не считаем», без уровня и бриллиантов недели', () => {
+test('меню: все числа правил и лимит «не считаем», без уровня и бриллиантов', () => {
   const menu = UI.menuSheet(model({}));
-  for (const path of ['weekly/sport/goal/p0', 'weekly/read/goal/p1', 'monthly/cook/goal/p1', 'food/chips/p0', 'food/croissant/p0', 'overCost', 'cookCost', 'coughDays', 'fitSport']) {
+  for (const path of ['weekly/sport/goal/p0', 'weekly/read/goal/p1', 'monthly/cook/goal/p1', 'food/chips/p0', 'food/croissant/p0', 'coughDays', 'fitSport']) {
     assert.match(menu, new RegExp(`data-path="${path}"`), path);
   }
-  assert.doesNotMatch(menu, /data-path="(gem[123]|lvl\w+|badMonthGems)"/);
+  assert.doesNotMatch(menu, /data-path="(gem[123]|lvl\w+|badMonthGems|overCost|cookCost)"/);
   // круассаны Елисей не считает: минус закрыт, плюс вернет в счет
   assert.match(menu, /data-path="food\/croissant\/p0" data-v="" [^>]*data-d="-1"[^>]*disabled/);
   assert.match(menu, /<span class="num-value is-off">не считаем<\/span>/);
   assert.doesNotMatch(menu, /data-act="reset"|обнулить/); // обнуление было только для уровня
 });
 
-test('нет ни уровня, ни бриллиантов недели: главная, дневник, итоги, правила, кто заходит', () => {
+test('нет ни уровня, ни бриллиантов, ни «вместе»: главная, дневник, итоги, питание, правила, кто заходит', () => {
   const pages = [
     UI.page(model({})),
     UI.page(model({ board: 'food' })),
     UI.page(model({ mode: 'month' })),
     UI.page(model({ viewStart: '2026-10-12' })), // закрытая неделя в дневнике
     UI.page(model({ screen: 'stats' })),
+    UI.page(model({ screen: 'food' })),
     UI.page(model({ screen: 'rules' })),
+    UI.menuSheet(model({})),
     UI.whoAreYou([{ name: 'Елисей' }, { name: 'Неля' }]),
   ];
   for (const html of pages) {
     assert.doesNotMatch(html, /lvl|уров/i);
-    assert.doesNotMatch(html, /бриллиант\S* недел|неделя: \d+ бриллиант|cal-gems/);
+    assert.doesNotMatch(html, /бриллиант|class="gems|cal-gems/i);
+    assert.doesNotMatch(html, /вместе|together/i);
   }
-  // бриллианты остались только у месяца: на главной по одному ряду у каждого
+  // цели остались: неделя на доске и в итоге недели, готовка за месяц
   const home = UI.page(model({}));
-  assert.equal(home.match(/class="gems[ "]/g).length, 2);
-  assert.match(home, /aria-label="Елисей, месяц: \d бриллиант/);
-  // итог недели в дневнике: спорт и чтение против цели
+  assert.match(home, /<span>спорт<\/span><\/dt><dd><b>\d+<\/b> из 3/);
+  assert.match(home, /<span>готовка<\/span><\/dt><dd><b>\d+<\/b> из 5/);
   const week = UI.page(model({ viewStart: '2026-10-12' }));
   assert.match(week, /<tfoot>[^]*class="wk-goals"[^]*спорт <b>\d+<\/b> из 3[^]*чтение <b>\d+<\/b> из 3/);
+});
+
+test('поцелуй: кнопка в комнате над персонажами и момент с сердцами', () => {
+  const home = UI.page(model({}));
+  assert.match(home, /<div class="room"[^]*<button class="kiss-btn" type="button" data-act="kiss" data-key="kiss" aria-label="отправить поцелуй: Неля"><svg[^]*<span>поцелуй<\/span><\/button><\/div>/);
+  const one = UI.kissMoment({ name: 'Елисей' });
+  assert.match(one, /<div class="kiss-hearts" aria-hidden="true">/);
+  assert.equal(one.split('class="kiss-heart"').length - 1, 10);
+  assert.match(one, /<p class="kiss-say">Елисей шлет поцелуй<\/p>/);
+  assert.match(UI.kissMoment({ name: 'Неля', n: 3 }), /Неля шлет поцелуй <b>×3<\/b>/);
+  assert.equal(UI.kissPuff().split('class="puff-heart"').length - 1, 3);
+  for (const html of [one, UI.kissPuff()]) assert.doesNotMatch(html, /undefined|NaN/);
 });
 
 test('версия сайта видна внизу главной и в меню, а у себя на машине ее нет', () => {

@@ -105,18 +105,9 @@ export function buildText(build) {
   return `версия от ${two(d.getDate())}.${two(d.getMonth() + 1)}, ${two(d.getHours())}:${two(d.getMinutes())}`;
 }
 
-export const nGems = (n) => `${n} ${plural(n, 'бриллиант', 'бриллианта', 'бриллиантов')}`;
-
-/** Из чего сложились бриллианты месяца: перебор и готовка. */
-export function monthWhy(ms, who) {
-  const over = ms.over[who].length ? `перебор: ${ms.over[who].map((k) => KIND[k].name).join(', ')}` : 'питание в лимитах';
-  return `${over}, готовка ${ms.cook[who].done} из ${ms.cook[who].goal}`;
-}
-
 /** Возгласы после отметки: тон и варианты фразы. Вариант выбирается случайно. */
 export const SHOUT = {
   good: { tone: 'good', say: ['так держать!', 'отлично!', 'плюс один!'] },
-  together: { tone: 'together', say: ['вместе!'] },
   'week-goal': { tone: 'good', say: ['цель недели!'] },
   'month-goal': { tone: 'good', say: ['цель месяца!'] },
   ok: { tone: 'calm', say: ['в лимите'] },
@@ -128,7 +119,7 @@ export const SHOUT = {
 export const STICKER = {
   sport: { name: 'спорт', how: 'Тренировки за все время.' },
   read: { name: 'чтение', how: 'Дни с чтением за все время.' },
-  cook: { name: 'готовка', how: 'Готовка дома за все время, вместе с тем, что было до приложения.' },
+  cook: { name: 'готовка', how: 'Готовка дома за все время, включая то, что было до приложения.' },
   nofast: { name: 'без фастфуда', how: 'Закрытые месяцы без шаурмы, фастфуда и бургеров.' },
 };
 

@@ -409,6 +409,36 @@ main > .scene {
   transform: translateY(3px);
 }
 
+/* поцелуй: сердце наверху комнаты, над головами персонажей */
+.kiss-btn {
+  position: absolute;
+  top: var(--s2);
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: var(--s1) 14px var(--s1) 10px;
+  border: 2px solid var(--ink);
+  border-radius: var(--r-btn);
+  background: var(--paper);
+  box-shadow: var(--drop-btn);
+  font-weight: 600;
+  color: var(--ink);
+  transform: translateX(-50%);
+}
+
+.kiss-btn:active {
+  transform: translate(-50%, 3px);
+  box-shadow: none;
+}
+
+@media (hover: hover) {
+  .kiss-btn:hover {
+    background: var(--tint);
+  }
+}
+
 .board {
   padding: var(--s3) var(--s4);
 }
@@ -532,32 +562,6 @@ main > .scene {
 /* цель набрана: число зеленым */
 .stat.is-met dd b {
   color: var(--good);
-}
-
-.gems-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--s1);
-  min-height: 28px;
-}
-
-.gems-line .gems-note {
-  margin-left: var(--s1);
-}
-
-.chip.is-over::after,
-.fc.is-over::after {
-  content: '';
-  position: absolute;
-  top: -6px;
-  left: -6px;
-  width: 14px;
-  height: 14px;
-  border-radius: 2px;
-  background: var(--foul)
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' shape-rendering='crispEdges'%3E%3Cpath fill='%23fbf1d8' d='M1 1h1v1H1zM5 1h1v1H5zM2 2h1v1H2zM4 2h1v1H4zM3 3h1v1H3zM2 4h1v1H2zM4 4h1v1H4zM1 5h1v1H1zM5 5h1v1H5z'/%3E%3C/svg%3E")
-    center / 14px 14px no-repeat;
 }
 
 /* --- дневник --------------------------------------------------------------- */
@@ -748,6 +752,21 @@ main > .week {
   color: var(--ink);
 }
 
+/* перебор: крестик в углу у отметки и у числа в таблице еды */
+.chip.is-over::after,
+.fc.is-over::after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--foul)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' shape-rendering='crispEdges'%3E%3Cpath fill='%23fbf1d8' d='M1 1h1v1H1zM5 1h1v1H5zM2 2h1v1H2zM4 2h1v1H4zM3 3h1v1H3zM2 4h1v1H2zM4 4h1v1H4zM1 5h1v1H1zM5 5h1v1H5z'/%3E%3C/svg%3E")
+    center / 14px 14px no-repeat;
+}
+
 /* перебор читается без подписи: красная рамка и крестик в углу */
 .chip.is-over::before {
   content: '';
@@ -788,25 +807,6 @@ main > .week {
 
 .wk-goals .is-met b {
   color: var(--good);
-}
-
-/* бриллианты месяца */
-.gems {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  vertical-align: middle;
-}
-
-/* неделя еще идет: бриллианты бледнее */
-.gems.is-open {
-  opacity: 0.72;
-}
-
-.gems-note {
-  margin-left: var(--s2);
-  font-size: var(--text-sm);
-  color: var(--muted);
 }
 
 /* --- декор ---------------------------------------------------------------- */
@@ -1125,18 +1125,6 @@ main > .week {
   color: var(--muted);
 }
 
-/* вместе: строка под месяцем на двоих */
-.together-line {
-  margin-top: var(--s4);
-  max-width: 56ch;
-  color: var(--muted);
-}
-
-.together-line b {
-  font-weight: 600;
-  color: var(--ink);
-}
-
 /* --- питание: таблица месяца ------------------------------------------------ */
 
 .food-hint {
@@ -1343,17 +1331,17 @@ ol.rule-list .rule h2::before {
   max-width: 56ch;
 }
 
-.gem-key {
+.rule-sec {
   margin-top: var(--s6);
 }
 
-.gem-key ul {
+.rule-sec ul {
   display: grid;
   gap: var(--s3);
   margin-top: var(--s4);
 }
 
-.gem-key li {
+.rule-sec li {
   display: flex;
   align-items: center;
   gap: var(--s4);
@@ -1364,12 +1352,12 @@ ol.rule-list .rule h2::before {
   max-width: 56ch;
 }
 
-.gem-key .key-note + ul {
+.rule-sec .key-note + ul {
   margin-top: var(--s3);
 }
 
 /* позы персонажа картинкой и словами */
-.gem-key ul.poses {
+.rule-sec ul.poses {
   gap: var(--s2);
 }
 
@@ -2079,8 +2067,83 @@ ol.rule-list .rule h2::before {
   color: #ff5a43;
 }
 
-.shout[data-tone='together'] {
-  color: var(--together);
+.shout[data-tone='kiss'] {
+  color: var(--kiss);
+}
+
+/* --- поцелуй: момент у того, кому прислали ------------------------------------------ */
+
+/* весь экран, но сквозь него можно нажимать */
+.kiss {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-toast) + 1);
+  overflow: hidden;
+  background: var(--kiss-wash);
+  pointer-events: none;
+  animation: kiss-wash 2.6s linear both;
+}
+
+.kiss[hidden] {
+  display: none;
+}
+
+.kiss-hearts {
+  position: absolute;
+  inset: 0;
+}
+
+/* без движения сердца просто стоят там, где их расставили */
+.kiss-heart {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  transform: translateX(-50%) scale(var(--s));
+}
+
+.kiss-say {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 40%;
+  margin: 0;
+  padding: 0 var(--s4);
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  line-height: 1.6;
+  text-align: center;
+  text-wrap: balance;
+  color: var(--kiss);
+  text-shadow:
+    2px 0 0 var(--ink),
+    -2px 0 0 var(--ink),
+    0 2px 0 var(--ink),
+    0 -2px 0 var(--ink),
+    2px 2px 0 var(--ink),
+    -2px 2px 0 var(--ink),
+    2px -2px 0 var(--ink),
+    -2px -2px 0 var(--ink),
+    0 6px 0 var(--wall-deep);
+}
+
+.kiss-say b {
+  white-space: nowrap;
+}
+
+/* у того, кто отправил: пара сердечек над кнопкой */
+.puff {
+  position: fixed;
+  z-index: var(--z-toast);
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.puff-heart {
+  position: absolute;
+  left: var(--x);
+  bottom: 0;
+  opacity: 0;
 }
 
 /* --- движение ------------------------------------------------------------------ */
@@ -2105,12 +2168,74 @@ ol.rule-list .rule h2::before {
     animation: sheet-in 240ms var(--ease-out);
   }
 
+  /* сердца поцелуя всплывают снизу рывками, как в старых играх, и гаснут */
+  .kiss-heart {
+    top: auto;
+    bottom: -64px;
+    animation: kiss-float 2.2s steps(22, end) var(--d) both;
+  }
+
+  .puff-heart {
+    animation: puff 1.2s steps(12, end) var(--d) both;
+  }
+
   .sheet[open]::backdrop {
     animation: fade-in 200ms ease-out;
   }
 
   .toast:not([hidden]) {
     animation: toast-in 200ms var(--ease-out);
+  }
+}
+
+@keyframes kiss-wash {
+  0% {
+    opacity: 0;
+  }
+
+  10%,
+  80% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes kiss-float {
+  0% {
+    transform: translateX(-50%) translateY(0) scale(var(--s));
+    opacity: 0;
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  75% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(-50%) translateY(-75vh) scale(var(--s));
+    opacity: 0;
+  }
+}
+
+@keyframes puff {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(-56px);
+    opacity: 0;
   }
 }
 

@@ -36,7 +36,7 @@ export function demoState(today) {
     [1, 5],
     [2, 2],
   ].forEach(([w, d]) => put(1, 'sport', at(w, d)));
-  // вместе: оба в один день
+  // в один день у обоих
   put(1, 'sport', at(0, 2));
   put(0, 'read', at(2, 4));
   // готовка

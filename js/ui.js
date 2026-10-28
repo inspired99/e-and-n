@@ -2,9 +2,9 @@
 // Все пользовательские строки проходят через esc(). Состояние показываем картинкой,
 // но каждое число подписано словом.
 
-import { FOOD, GEMS, GOAL_KEYS, GOAL_MAX, GOOD, RANGE, WEEKLY, addDays, dow, isFood, monthWeeks, preview, qty, weekDays } from './rules.js';
+import { FOOD, GOAL_KEYS, GOAL_MAX, GOOD, RANGE, WEEKLY, addDays, dow, isFood, monthWeeks, preview, qty, weekDays } from './rules.js';
 import * as C from './copy.js';
-import { LOOKS, STATURE, gem, hero, heroTogether, icon, navIcon, prop, sticker } from './sprites.js';
+import { LOOKS, STATURE, hero, heroTogether, icon, navIcon, prop, sticker } from './sprites.js';
 
 const { esc } = C;
 
@@ -65,23 +65,6 @@ function banner(m) {
   return '';
 }
 
-// --- бриллианты --------------------------------------------------------------
-
-/** Три места под бриллианты, цветных столько, сколько получено. */
-function gemRow(n, small = false) {
-  return [0, 1, 2].map((i) => gem(i < n, { scale: small ? 1 : 2 })).join('');
-}
-
-/** Бриллианты месяца. */
-function monthGems(m, ms, who) {
-  const n = ms.gems[who];
-  const name = esc(m.players[who].name);
-  return `<span class="gems${ms.closed ? '' : ' is-open'}" role="img"
-    aria-label="${name}, месяц: ${C.nGems(n)} из ${GEMS}${ms.closed ? '' : ' пока'}, ${C.monthWhy(ms, who)}">${gemRow(n)}</span>`;
-}
-
-const pending = (closed) => (closed ? '' : '<span class="gems-note">пока</span>');
-
 // --- главная: общая комната и доска под ней ---------------------------------------
 
 /** Персонаж в комнате: касание открывает лист «одежда». Неля рисуется чуть ниже ростом, подошвы на одном полу. */
@@ -125,8 +108,7 @@ function trackerBoard(m) {
     .map((who) =>
       col(
         who,
-        `<dl class="stats">${stat('cook', ms.cook[who].done, ms.cook[who].goal)}</dl>
-        <p class="gems-line">${monthGems(m, ms, who)}${pending(ms.closed)}</p>`,
+        `<dl class="stats">${stat('cook', ms.cook[who].done, ms.cook[who].goal)}</dl>`,
       ),
     )
     .join('');
@@ -181,9 +163,14 @@ function board(m) {
   </div>`;
 }
 
+/** Поцелуй: сердце наверху комнаты, над головами, чтобы не задевать касание по персонажам. */
+function kissButton(m) {
+  return `<button class="kiss-btn" type="button" data-act="kiss" data-key="kiss" aria-label="отправить поцелуй: ${esc(m.players[m.other].name)}">${icon('heart')}<span>поцелуй</span></button>`;
+}
+
 function scene(m) {
   return `<section class="scene" aria-label="комната">
-    <div class="room" style="--stature: ${STATURE[1]}">${roomHero(m, 0)}${roomHero(m, 1)}</div>
+    <div class="room" style="--stature: ${STATURE[1]}">${roomHero(m, 0)}${roomHero(m, 1)}${kissButton(m)}</div>
     ${board(m)}
   </section>`;
 }
@@ -264,7 +251,7 @@ function weekBlock(m) {
     </table>`;
 }
 
-/** Сетка месяца, как календарь в заметках: семь столбцов по дням недели, справа бриллианты недели. */
+/** Сетка месяца, как календарь в заметках: семь столбцов по дням недели. */
 function calendarGrid(m, who) {
   const name = esc(m.players[who].name);
   const head = C.DOW_SHORT.map((d) => `<th scope="col">${d}</th>`).join('');
@@ -377,7 +364,6 @@ function monthForTwo(m) {
   const count = (kind) => [0, 1].map((who) => m.events.filter((e) => e.kind === kind && e.who === who && e.day.slice(0, 7) === m.month).length);
   const overs = [0, 1].map((who) => ms.over[who].length);
   const head = [0, 1].map((who) => `<th scope="col">${heroTogether(who, m.looks[who], 'idle', { size: 48 })}<span>${esc(m.players[who].name)}</span></th>`).join('');
-  const gemsCells = [0, 1].map((who) => `<span class="gems${ms.closed ? '' : ' is-open'}" role="img" aria-label="${C.nGems(ms.gems[who])}${ms.closed ? '' : ' пока'}">${gemRow(ms.gems[who], true)}</span>`);
   return `<table class="duo">
     <thead><tr><th scope="col"><span class="sr">что за месяц</span></th>${head}</tr></thead>
     <tbody>
@@ -385,10 +371,8 @@ function monthForTwo(m) {
       ${row(icon('read'), 'чтение', count('read'))}
       ${row(icon('cook'), 'готовка', ms.cook.map((c) => `${c.done} из ${c.goal}`))}
       ${row(chip('chocolate', 'is-over', ''), 'продуктов сверх лимита', overs)}
-      ${row(gem(true), `бриллианты месяца${ms.closed ? '' : ', пока'}`, gemsCells)}
     </tbody>
-  </table>
-  <p class="together-line"><b>вместе: ${C.nTimes(m.together.month)}</b> за месяц, ${C.nTimes(m.together.all)} за все время. Это дни, когда оба отметили одно и то же полезное.</p>`;
+  </table>`;
 }
 
 function stats(m) {
@@ -414,7 +398,6 @@ function foodPage(m) {
   const head = [0, 1].map((who) => `<th scope="col">${heroTogether(who, m.looks[who], 'idle', { size: 48 })}<span>${esc(m.players[who].name)}</span></th>`).join('');
   const rows = foodRows(m, ms, current);
   const cook = [0, 1].map((who) => `<td><span class="fc${ms.cook[who].met ? ' is-met' : ''}">${ms.cook[who].done} из ${ms.cook[who].goal}</span></td>`).join('');
-  const gems = [0, 1].map((who) => `<td>${monthGems(m, ms, who)}</td>`).join('');
   return `<main id="main" class="page">
     <h1 class="sr">питание</h1>
     <section class="food-panel" aria-labelledby="food-title">
@@ -422,13 +405,12 @@ function foodPage(m) {
         <h2 class="page-title" id="food-title">${C.monthTitle(m.month)}</h2>
         ${monthNav(m)}
       </div>
-      <p class="hint food-hint">Съедено за месяц и лимит. Сверх лимита красным, каждый такой продукт снимает бриллиант месяца. Прочерк: этот продукт человек не считает.</p>
+      <p class="hint food-hint">Съедено за месяц и лимит. Сверх лимита красным, с крестиком. Прочерк: этот продукт человек не считает.</p>
       <table class="food">
         <thead><tr><th scope="col"><span class="sr">продукт</span></th>${head}</tr></thead>
         <tbody>${rows}</tbody>
         <tfoot>
           <tr><th scope="row"><span class="rh">${icon('cook')}<span>готовка</span></span></th>${cook}</tr>
-          <tr><th scope="row"><span class="rh">${gem(true)}<span>бриллианты${ms.closed ? '' : ', пока'}</span></span></th>${gems}</tr>
         </tfoot>
       </table>
       ${ms.carry ? `<p class="hint">В этом месяце учтено и то, что было до приложения.</p>` : ''}
@@ -449,14 +431,9 @@ function rules(m) {
     <ul class="rule-list">
       ${item(`${icon('sport', { scale: 3 })}${icon('read', { scale: 3 })}`, 'неделя', `Спорт и чтение считаются с понедельника по воскресенье. Цель на неделю: спорт ${goals('sport')}, чтение ${goals('read')}. Набрал цель: «цель недели!», число становится зеленым.`)}
       ${item(icon('cook', { scale: 3 }), 'месяц', `Готовка дома считается за месяц, цель ${goals('cook')}. Питание тоже по месяцам: у каждого свой лимит на каждый продукт и свой список того, что считаем.`)}
-      ${item(chip('chocolate', 'is-over', ''), 'перебор', `Продукт сверх лимита красный, с крестиком. ${s.overCost ? `Каждый такой продукт снимает ${s.overCost > 1 ? `${s.overCost} бриллианта` : 'бриллиант'} месяца` : 'Бриллианты месяца он не снимает'}. Штрафов и отработок нет.`)}
-      ${item(`${heroTogether(0, m.looks[0], 'idle', { size: 40 })}${heroTogether(1, m.looks[1], 'idle', { size: 40 })}`, 'вместе', 'Оба отметили одно и то же полезное в один день: всплывает «вместе!», в итогах растет счетчик.')}
+      ${item(chip('chocolate', 'is-over', ''), 'перебор', 'Продукт сверх лимита красный, с крестиком. Это просто отметка: штрафов, отработок и оценок нет.')}
     </ul>
-    <section class="gem-key" aria-labelledby="gem-month-title">
-      <h2 id="gem-month-title">бриллианты месяца</h2>
-      <p class="key-note">Месяц начинается с трех. Минус ${s.overCost} за каждый продукт сверх лимита, минус ${s.cookCost}, если готовки меньше цели. Не меньше нуля. Пока месяц идет, бриллианты считаются так, будто он кончился сегодня.</p>
-    </section>
-    <section class="gem-key" aria-labelledby="pose-title">
+    <section class="rule-sec" aria-labelledby="pose-title">
       <h2 id="pose-title">персонажи</h2>
       <ul class="poses">
         <li>${hero(m.me, m.looks[m.me], 'sleep', { size: 72 })}<span>Каждое утро спит, пока не сделаешь первую отметку за день.</span></li>
@@ -667,12 +644,6 @@ export function menuSheet(m) {
       ${limits}
     </section>
     <section class="set">
-      <h3>бриллианты месяца</h3>
-      <p class="hint">Месяц начинается с трех бриллиантов. Сколько снимает:</p>
-      ${one('продукт сверх лимита', 'overCost')}
-      ${one('готовка меньше цели', 'cookCost')}
-    </section>
-    <section class="set">
       <h3>персонаж</h3>
       ${one('кашляет после дней без спорта', 'coughDays')}
       ${one('в форме от тренировок за неделю', 'fitSport')}
@@ -772,3 +743,31 @@ export function loading(status) {
   const text = status === 'offline' ? 'Нет сети. Дневник загрузится, когда появится связь.' : 'Загружаю дневник.';
   return `<main class="welcome" id="main"><p class="lead">${text}</p></main>`;
 }
+
+// --- поцелуй -------------------------------------------------------------------
+
+/** Сердца поцелуя: [x %, y % для покоя без движения, задержка с, масштаб]. Расставлены вручную, чтобы не слипались. */
+const KISS_HEARTS = [
+  [8, 62, 0, 1.5],
+  [22, 30, 0.35, 1],
+  [34, 74, 0.15, 2],
+  [47, 18, 0.55, 1.25],
+  [58, 56, 0.05, 1.75],
+  [71, 26, 0.45, 1],
+  [83, 68, 0.25, 1.5],
+  [92, 40, 0.6, 1],
+  [15, 86, 0.7, 1.25],
+  [64, 84, 0.8, 1.25],
+];
+
+/** Полноэкранный момент у того, кому прислали поцелуй: сердца всплывают и гаснут, подпись по центру. */
+export function kissMoment({ name, n = 1 }) {
+  const hearts = KISS_HEARTS.map(([x, y, d, s]) => `<span class="kiss-heart" style="--x: ${x}%; --y: ${y}%; --d: ${d}s; --s: ${s}">${icon('heart', { scale: 3 })}</span>`).join('');
+  return `<div class="kiss-hearts" aria-hidden="true">${hearts}</div><p class="kiss-say">${esc(name)} шлет поцелуй${n > 1 ? ` <b>×${n}</b>` : ''}</p>`;
+}
+
+/** Пара сердечек над кнопкой у того, кто отправил. */
+export function kissPuff() {
+  return [-14, 4, 18].map((x, i) => `<span class="puff-heart" style="--x: ${x}px; --d: ${i * 0.12}s">${icon('heart')}</span>`).join('');
+}
+

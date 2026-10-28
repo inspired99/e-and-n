@@ -14,8 +14,6 @@ export const FAST = ['shawarma', 'fastfood', 'burger'];
 export const KINDS = [...GOOD, ...FOOD];
 export const isFood = (kind) => FOOD.includes(kind);
 
-/** Бриллиантов в месяце не больше трех. */
-export const GEMS = 3;
 /** В базе «этому не считаем» хранится как -1: Firebase стирает null. */
 export const OFF = -1;
 
@@ -34,9 +32,6 @@ export const DEFAULTS = {
     flatbread: [5, 5],
     curd: [5, null],
   },
-  // месяц: минус столько бриллиантов за каждый продукт сверх лимита и за цель готовки, не набранную к концу
-  overCost: 1,
-  cookCost: 1,
   // поза: кашляет после стольких дней без спорта, в форме от стольких тренировок за неделю
   coughDays: 7,
   fitSport: 2,
@@ -46,8 +41,8 @@ export const DEFAULTS = {
   goalCook: 10,
   goalNoFast: 1,
 };
-// Уровней и бриллиантов недели больше нет (владелец 29.10.2026: не соревноваться друг с другом).
-// Старые ключи настроек (gem1..3, lvl*, badMonthGems, resetDay, goalGems, goalLevel) просто не читаются.
+// Уровней, бриллиантов и «вместе» больше нет (владелец 29.10.2026: не соревноваться друг с другом).
+// Старые ключи настроек (gem1..3, lvl*, badMonthGems, resetDay, goalGems, goalLevel, overCost, cookCost) просто не читаются.
 
 /** Достижения с числом: в какой настройке лежит цель. */
 export const GOAL_KEYS = { sport: 'goalSport', read: 'goalRead', cook: 'goalCook', nofast: 'goalNoFast' };
@@ -57,8 +52,6 @@ export const RANGE = {
   weekGoal: [1, 14],
   cookGoal: [0, 31],
   limit: [0, 30],
-  overCost: [0, 3],
-  cookCost: [0, 3],
   coughDays: [1, 30],
   fitSport: [1, 14],
 };
@@ -189,8 +182,7 @@ export function preWeek(state, w) {
 
 /**
  * Итог месяца на двоих. Счет продукта и готовки идет с переноса (что было до приложения) плюс отметки.
- * Бриллиантов три, минус overCost за каждый продукт сверх лимита и минус cookCost, если готовки меньше цели.
- * Пока месяц идет, бриллианты считаются так, будто он кончился сегодня, и помечены «пока».
+ * over: продукты сверх лимита у каждого, cook: готовка против цели. Оценок за месяц нет.
  */
 export function monthSummary(state, month, today) {
   const s = normalize(state.settings);
@@ -200,9 +192,8 @@ export function monthSummary(state, month, today) {
   for (const e of events) used[e.kind][e.who] += qty(e);
   const over = [0, 1].map((who) => FOOD.filter((id) => s.limits[id][who] != null && used[id][who] > s.limits[id][who]));
   const cook = [0, 1].map((who) => ({ done: used.cook[who], goal: s.goals.cook[who], met: used.cook[who] >= s.goals.cook[who] }));
-  const gems = [0, 1].map((who) => Math.max(0, GEMS - over[who].length * s.overCost - (cook[who].met ? 0 : s.cookCost)));
   const carry = [0, 1].some((who) => Boolean(s.carry[month] && s.carry[month][`p${who}`]));
-  return { month, closed: monthEnd(month) < today, used, over, cook, gems, carry };
+  return { month, closed: monthEnd(month) < today, used, over, cook, carry };
 }
 
 /** Отметки еды сверх лимита: id записей. Считается по каждому месяцу от переноса и по времени. */
@@ -244,7 +235,7 @@ export function timeline(state, today) {
   return out;
 }
 
-// --- состояние персонажа и «вместе» --------------------------------------------
+// --- состояние персонажа ---------------------------------------------------------
 
 /**
  * Поза персонажа, по старшинству:
@@ -269,20 +260,6 @@ export function mood(state, who, today) {
   return 'idle';
 }
 
-/** Дни, когда оба сделали одно полезное: [{day, kind}], с from по to включительно. */
-export function together(state, from, to) {
-  const seen = new Map();
-  for (const e of live(state.events)) {
-    if (!GOOD.includes(e.kind) || e.day < from || e.day > to) continue;
-    const key = `${e.day}|${e.kind}`;
-    seen.set(key, (seen.get(key) || 0) | (1 << e.who));
-  }
-  return [...seen].filter(([, mask]) => mask === 3).map(([key]) => {
-    const [day, kind] = key.split('|');
-    return { day, kind };
-  });
-}
-
 // --- подсказки и возгласы -----------------------------------------------------
 
 /** Что будет после отметки: сколько станет за неделю или за месяц и предел. */
@@ -304,14 +281,11 @@ export function preview(state, today, { who, kind, day, n = 1 }) {
 
 /**
  * Какой возглас показать после отметки. Считается по состоянию до записи.
- * targets: кому отмечаем. Возвращает код: together, week-goal, month-goal, good, over, last, ok.
+ * targets: кому отмечаем. Возвращает код: week-goal, month-goal, good, over, last, ok.
  */
 export function shoutFor(state, today, { targets, kind, day, n = 1 }) {
   const who = targets[0];
   if (GOOD.includes(kind)) {
-    const other = who === 0 ? 1 : 0;
-    const otherDid = live(state.events).some((e) => e.who === other && e.kind === kind && e.day === day);
-    if (targets.length > 1 || otherDid) return 'together';
     const p = preview(state, today, { who, kind, day });
     if (p.had < p.goal && p.will >= p.goal) return p.scope === 'week' ? 'week-goal' : 'month-goal';
     return 'good';
@@ -352,4 +326,23 @@ export function stickers(state, today) {
     for (const [id, key] of Object.entries(GOAL_KEYS)) out.push({ id, who, have: have[id], need: s[key], got: have[id] >= s[key] });
   }
   return out;
+}
+
+// --- поцелуи ------------------------------------------------------------------
+
+/** Поцелуй старше стольких дней уже не показываем, даже если устройство его не видело. */
+export const KISS_DAYS = 3;
+
+/**
+ * Непоказанные поцелуи человеку: адресованы ему, не убраны, новее того, что это устройство уже показало (seenAt),
+ * и моложе KISS_DAYS. Возвращает null или { n, from, last }: сколько, от кого последний, время последнего.
+ */
+export function unseenKisses(state, who, seenAt = 0, now = Date.now()) {
+  const fresh = Object.values(state.kisses || {}).filter((k) => {
+    const at = Number(k && k.at);
+    return k && !k.del && k.to === who && at > seenAt && at <= now + DAY_MS && now - at < KISS_DAYS * DAY_MS;
+  });
+  if (!fresh.length) return null;
+  const lastKiss = fresh.reduce((a, b) => (Number(b.at) > Number(a.at) ? b : a));
+  return { n: fresh.length, from: lastKiss.from === 1 ? 1 : 0, last: Number(lastKiss.at) };
 }

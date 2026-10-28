@@ -39,6 +39,9 @@ export const prefs = {
   /** Что под комнатой на этом устройстве: 'tracker' или 'food'. */
   board: () => ls.get('en:board'),
   setBoard: (board) => ls.set('en:board', board),
+  /** Время последнего показанного поцелуя этому человеку на этом устройстве: чтобы не показывать дважды. */
+  kissSeen: (room, who) => Number(ls.get(`en:kissSeen:${room}:p${who}`)) || 0,
+  setKissSeen: (room, who, at) => ls.set(`en:kissSeen:${room}:p${who}`, at),
 };
 
 /** Что это устройство знает о дневнике: последний снимок и неотправленные записи. Пусто, если не знает ничего. */

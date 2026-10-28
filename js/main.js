@@ -18,6 +18,7 @@ const sheetBody = document.getElementById('sheet-body');
 const toastEl = document.getElementById('toast');
 const shoutEl = document.getElementById('shout');
 const ptrEl = document.getElementById('ptr');
+const kissEl = document.getElementById('kiss');
 
 const params = new URLSearchParams(location.search);
 const isDemo = params.has('demo');
@@ -108,6 +109,42 @@ function render() {
     app.innerHTML = UI.page(m);
     renderSheet(m);
   });
+  checkKisses();
+}
+
+// --- поцелуи -----------------------------------------------------------------
+
+let kissTimer = null;
+const KISS_MS = 2600;
+
+/** Пришел поцелуй тому, кто сейчас выбран на этом устройстве: сердца на весь экран, потом все уходит само. */
+function checkKisses() {
+  if (!store || me == null || document.visibilityState !== 'visible') return;
+  const res = R.unseenKisses(store.state, me, prefs.kissSeen(store.room, me), Date.now());
+  if (!res) return;
+  prefs.setKissSeen(store.room, me, res.last);
+  kissEl.innerHTML = UI.kissMoment({ name: playersOf(store.state)[res.from].name, n: res.n });
+  kissEl.hidden = true;
+  void kissEl.offsetWidth; // перезапуск анимации, если момент еще на экране
+  kissEl.hidden = false;
+  clearTimeout(kissTimer);
+  kissTimer = setTimeout(() => {
+    kissEl.hidden = true;
+    kissEl.innerHTML = '';
+  }, KISS_MS);
+}
+
+/** Пара сердечек над кнопкой у того, кто отправил. Живут в body: перерисовка экрана их не стирает. */
+function kissPuff(btn) {
+  const r = btn.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'puff';
+  el.setAttribute('aria-hidden', 'true');
+  el.style.left = `${Math.round(r.left + r.width / 2)}px`;
+  el.style.top = `${Math.round(r.top)}px`;
+  el.innerHTML = UI.kissPuff();
+  document.body.append(el);
+  setTimeout(() => el.remove(), 1400);
 }
 
 function openSheet(state) {
@@ -258,6 +295,13 @@ const actions = {
     store.write([{ path: `events/${id}/del`, value: true }]);
     closeSheet();
     toast('запись убрана', () => store.write([{ path: `events/${id}/del`, value: null }]));
+  },
+  /** Поцелуй второму: запись в дневник, как отметка, поэтому без сети уходит в очередь. */
+  kiss(el) {
+    const id = newId();
+    kissPuff(el);
+    store.write([{ path: `kisses/${id}`, value: { id, from: me, to: me === 0 ? 1 : 0, at: Date.now() } }]);
+    toast('поцелуй отправлен');
   },
   /** Лист «одежда»: касание по персонажу в комнате. */
   'look-open'(el) {
@@ -485,7 +529,7 @@ sheet.addEventListener('close', () => {
 });
 
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && store && !newDay()) render();
+  if (document.visibilityState === 'visible' && store && !newDay()) render(); // render сам проверит поцелуи
 });
 
 // --- запуск ------------------------------------------------------------------

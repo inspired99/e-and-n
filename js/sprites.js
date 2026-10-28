@@ -14,8 +14,6 @@ export const BASE = {
   R: '#ff66cf',
   N: '#22c55e', // зелень: гантель, салат
   Y: '#f5c542', // желтое: картошка, сыр, чипс
-  C: '#6fd3f2', // бриллиант
-  S: '#2f8fcf', // его темная грань
   X: '#e3342f', // красное: пачка, помидор, обертка
   T: '#d38b3c', // корочка выпечки
   U: '#f6d79b', // мякиш, лаваш
@@ -23,6 +21,7 @@ export const BASE = {
   M: '#45240f', // темный шоколад, прожилки
   A: '#9aa6b2', // металл кастрюли
   I: '#dfe6ec', // блик на металле
+  L: '#f0476e', // сердце поцелуя
 };
 
 // Персонажи и образы нарисованы владельцем: assets/src/looks/<кто>-<образ>.png, нарезка tools/sprites.mjs looks.
@@ -203,6 +202,21 @@ const ICONS = {
     '...KKKKKK...',
     '............',
   ],
+  // поцелуй: пиксельное сердце с бликом
+  heart: [
+    '............',
+    '..KKK..KKK..',
+    '.KLLLKKLLLK.',
+    'KLWWLLLLLLLK',
+    'KLWLLLLLLLLK',
+    'KLLLLLLLLLLK',
+    '.KLLLLLLLLK.',
+    '..KLLLLLLK..',
+    '...KLLLLK...',
+    '....KLLK....',
+    '.....KK.....',
+    '............',
+  ],
   // сырок: глазированный брусок в синей обертке, откушен край
   curd: [
     '............',
@@ -280,21 +294,6 @@ const NAV = {
     '............',
   ],
 };
-
-// бриллиант 11x9: цветной получен, пустой нет
-const GEM = [
-  '..KKKKKKK..',
-  '.KWWCCCCCK.',
-  'KWCCCCCCCSK',
-  'KCCCCCCCSSK',
-  '.KCCCCCSSK.',
-  '..KCCCSSK..',
-  '...KCSSK...',
-  '....KSK....',
-  '.....K.....',
-];
-// пустое место под бриллиант: контур и пергамент
-const GEM_EMPTY = { K: '#b79d68', W: '#e7d2a4', C: '#e7d2a4', S: '#e7d2a4' };
 
 // --- наклейки 16x16 ---------------------------------------------------------
 
@@ -458,10 +457,6 @@ export function navIcon(name, opts = {}) {
   return render(NAV[name], BASE, { scale: 2, ...opts });
 }
 
-export function gem(full, opts = {}) {
-  return render(GEM, full ? BASE : { ...BASE, ...GEM_EMPTY }, { scale: 2, ...opts });
-}
-
 /** Картинка достижения. */
 export function sticker(id, opts = {}) {
   return render(STICKERS[id], BASE, { scale: 3, ...opts });
@@ -473,6 +468,5 @@ export function allGrids() {
   for (const [k, rows] of Object.entries(ICONS)) out.push({ name: `icon ${k}`, rows, w: 12, h: 12 });
   for (const [k, rows] of Object.entries(NAV)) out.push({ name: `nav ${k}`, rows, w: 12, h: 12 });
   for (const [k, rows] of Object.entries(STICKERS)) out.push({ name: `sticker ${k}`, rows, w: 16, h: 16 });
-  out.push({ name: 'gem', rows: GEM, w: 11, h: 9 });
   return out;
 }

@@ -16,7 +16,7 @@ import {
   shoutFor,
   stickers,
   timeline,
-  together,
+  unseenKisses,
   weekOf,
 } from '../js/rules.js';
 
@@ -33,7 +33,7 @@ function make({ settings = {}, events = [] } = {}) {
   return state;
 }
 
-/** Неделя на три бриллианта: три спорта и три чтения. */
+/** Неделя с набранной целью: три спорта и три чтения. */
 const perfect = (who, w) => [0, 2, 4].flatMap((d) => [
   [who, 'sport', day(w * 7 + d)],
   [who, 'read', day(w * 7 + d + 1)],
@@ -80,7 +80,7 @@ test('неделя: счетчики спорта и чтения и выпол�
   assert.deepEqual(wk.counts.sport, [4, 1]);
   assert.deepEqual(wk.counts.read, [3, 2]);
   assert.deepEqual(wk.met, [{ sport: true, read: true }, { sport: false, read: false }]);
-  assert.equal('gems' in wk, false); // бриллиантов недели больше нет
+  assert.equal('gems' in wk, false); // бриллиантов больше нет
   assert.equal('lvlUp' in wk, false); // и уровня тоже
 });
 
@@ -89,8 +89,8 @@ test('свои цели: у кого цель спорта 1, тому хват�
   assert.deepEqual(timeline(state, day(1))[0].met[0], { sport: true, read: true });
 });
 
-test('старые настройки уровня и бриллиантов недели не мешают', () => {
-  const state = make({ settings: { lvlWeeks: 1, lvlMax: 3, gem3: 50, resetDay: day(3), goalLevel: 2, goalGems: 4 }, events: perfect(0, 0) });
+test('старые настройки уровня и бриллиантов не мешают', () => {
+  const state = make({ settings: { lvlWeeks: 1, lvlMax: 3, gem3: 50, resetDay: day(3), goalLevel: 2, goalGems: 4, overCost: 2, cookCost: 3 }, events: perfect(0, 0) });
   const weeks = timeline(state, day(14));
   assert.equal(weeks.length, 3);
   assert.equal(stickers(state, day(14)).length, 8);
@@ -112,20 +112,13 @@ test('месяц: лимиты, перебор и цель готовки', () =
   assert.deepEqual(ms.over[0], ['chips']);
   assert.deepEqual(ms.over[1], []);
   assert.deepEqual(ms.cook.map((c) => c.met), [true, false]);
-  assert.deepEqual(ms.gems, [2, 2]); // Елисей: минус чипсы; Неля: готовка 1 из 5
+  assert.equal('gems' in ms, false); // оценок за месяц нет
   // отметка, которая перешла лимит, красная; та, что в лимите, нет
   const ids = overIds(state);
   const chips = Object.values(state.events).filter((e) => e.kind === 'chips').sort((a, b) => a.at - b.at);
   assert.equal(ids.has(chips[0].id), false);
   assert.equal(ids.has(chips[1].id), true);
   assert.equal(ids.size, 1);
-});
-
-test('месяц: бриллианты не уходят ниже нуля, цену перебора можно поменять', () => {
-  const events = ['chips', 'shawarma', 'fastfood', 'chocolate'].map((k) => [1, k, '2026-11-05', { n: 2 }]);
-  assert.equal(monthSummary(make({ events }), '2026-11', '2026-11-20').gems[1], 0);
-  const soft = make({ settings: { overCost: 0, cookCost: 0 }, events });
-  assert.equal(monthSummary(soft, '2026-11', '2026-11-20').gems[1], 3);
 });
 
 test('продукт, который человек не считает, не дает перебора', () => {
@@ -147,11 +140,10 @@ test('перенос октября: у Нели шоколад 2 / 1 и гот�
   assert.deepEqual([oct.cook[0].done, oct.cook[0].goal], [1, 5]);
   assert.deepEqual(oct.used.curd, [3, 0]);
   assert.deepEqual(oct.used.croissant, [0, 2]);
-  // пока: Неля минус шоколад и минус готовка, Елисей минус готовка
-  assert.deepEqual(oct.gems, [2, 1]);
+  assert.deepEqual(oct.cook.map((c) => c.met), [false, false]);
   // готовка в последние дни дотягивает Нелю до цели
   const cooked = make({ settings: { carry: { '2026-10': OCTOBER } }, events: [[1, 'cook', '2026-10-29']] });
-  assert.deepEqual(monthSummary(cooked, '2026-10', '2026-10-30').gems, [2, 2]);
+  assert.deepEqual(monthSummary(cooked, '2026-10', '2026-10-30').cook.map((c) => c.met), [false, true]);
   // шоколад сверху переноса сразу красный, сырки до лимита нет
   const more = make({ settings: { carry: { '2026-10': OCTOBER } }, events: [[0, 'curd', '2026-10-29', { n: 2 }], [0, 'chocolate', '2026-10-29']] });
   const ids = overIds(more);
@@ -219,22 +211,10 @@ test('поза: две тренировки за неделю, и перебор
   assert.equal(mood(one, 1, day(1)), 'fit');
 });
 
-test('вместе: оба отметили одно полезное в один день', () => {
-  const state = make({
-    events: [
-      [0, 'sport', day(1)],
-      [1, 'sport', day(1)],
-      [0, 'read', day(2)],
-      [1, 'read', day(3)],
-      [0, 'cook', day(4)],
-      [1, 'cook', day(4)],
-      [0, 'chips', day(4)],
-      [1, 'chips', day(4)],
-    ],
-  });
-  assert.deepEqual(together(state, day(0), day(6)).map((t) => t.kind).sort(), ['cook', 'sport']);
-  assert.equal(shoutFor(state, day(3), { targets: [0], kind: 'read', day: day(3) }), 'together');
-  assert.equal(shoutFor(state, day(3), { targets: [0, 1], kind: 'sport', day: day(3) }), 'together');
+test('«вместе» больше нет: одно полезное в один день у обоих дает обычный возглас', () => {
+  const state = make({ events: [[1, 'sport', day(1)], [1, 'read', day(3)]] });
+  assert.equal(shoutFor(state, day(3), { targets: [0], kind: 'read', day: day(3) }), 'good');
+  assert.equal(shoutFor(state, day(1), { targets: [0, 1], kind: 'sport', day: day(1) }), 'good');
 });
 
 test('возгласы: цель недели, цель месяца, лимит', () => {
@@ -265,4 +245,26 @@ test('достижения: спорт, чтение, готовка с пере
   assert.equal(st(0, 'gems'), undefined);
   assert.equal(st(0, 'level'), undefined);
   assert.equal(stickers(state, today).length, 8);
+});
+
+test('поцелуи: непоказанные человеку, моложе трех дней, несколько сливаются в ×N', () => {
+  const now = Date.parse('2026-10-29T12:00:00Z');
+  const h = 3600000;
+  const kisses = {
+    a: { id: 'a', from: 0, to: 1, at: now - 2 * h },
+    b: { id: 'b', from: 0, to: 1, at: now - 1 * h },
+    c: { id: 'c', from: 0, to: 1, at: now - 30 * h },
+    old: { id: 'old', from: 0, to: 1, at: now - 73 * h }, // старше трех дней
+    gone: { id: 'gone', from: 0, to: 1, at: now - h / 2, del: true }, // убран
+    mine: { id: 'mine', from: 1, to: 0, at: now - h / 4 }, // Нелин поцелуй Елисею
+  };
+  const state = { kisses };
+  assert.deepEqual(unseenKisses(state, 1, 0, now), { n: 3, from: 0, last: now - h });
+  // устройство уже показало все до a включительно: остался один
+  assert.deepEqual(unseenKisses(state, 1, now - 2 * h, now), { n: 1, from: 0, last: now - h });
+  assert.equal(unseenKisses(state, 1, now - h, now), null); // все показаны
+  assert.deepEqual(unseenKisses(state, 0, 0, now), { n: 1, from: 1, last: now - h / 4 });
+  assert.equal(unseenKisses({}, 0, 0, now), null);
+  // через три дня тот же поцелуй уже не всплывает
+  assert.equal(unseenKisses({ kisses: { a: kisses.a } }, 1, 0, now + 72 * h), null);
 });
