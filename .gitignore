@@ -1,0 +1,9 @@
+.DS_Store
+
+# локальные рабочие файлы: настройки инструментов и описание продукта с личными деталями
+.claude/
+.impeccable/
+PRODUCT.md
+
+# собранный сайт: tools/build-site.sh _site
+_site/
