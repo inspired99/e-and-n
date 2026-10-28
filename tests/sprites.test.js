@@ -27,5 +27,5 @@ test('у каждого образа есть картинка на каждую
   });
   assert.match(hero(0, 'нет такого', 'нет такой'), /elisey-base-idle/);
   assert.match(hero(1, 'winter', 'cough'), /nelya-winter-cough/);
-  assert.match(hero(0, 'winter', 'idle'), /elisey-base-idle/); // зимнего у Елисея пока нет
+  assert.match(hero(0, 'winter', 'idle'), /elisey-winter-idle/); // зимний у Елисея появился 29.10
 });

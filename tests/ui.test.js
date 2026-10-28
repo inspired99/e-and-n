@@ -105,7 +105,7 @@ test('листы: отметить, одежда, меню, достижения
     assert.ok(html.length > 200);
     clean(html);
   }
-  assert.equal(sheets[3].split('data-act="look"').length - 1, 4);
+  assert.equal(sheets[3].split('data-act="look"').length - 1, 5);
   assert.equal(sheets[4].split('data-act="look"').length - 1, 5);
   assert.match(sheets[4], /aria-pressed="true" data-act="look" data-who="1" data-look="casual"/);
   assert.match(sheets[6], /data-path="goalSport"/);

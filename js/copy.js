@@ -55,7 +55,7 @@ export const MOOD = { idle: 'в порядке', fit: 'в форме', cough: '�
 
 /** Образы: подпись в листе «одежда». */
 export const LOOK = [
-  { base: 'футболка', summer: 'летний', sport: 'спортивный', city: 'в город' },
+  { base: 'футболка', summer: 'летний', sport: 'спортивный', city: 'в город', winter: 'зимний' },
   { base: 'сарафан', casual: 'повседневный', winter: 'зимний', sport: 'спортивный', dressy: 'нарядный' },
 ];
 

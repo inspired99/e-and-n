@@ -368,7 +368,7 @@ main > .scene {
   overflow: hidden;
 }
 
-/* комната нарисована картинкой 3:2; оба стоят на ковре внизу, касание открывает одежду */
+/* комната нарисована картинкой 3:2: квартира с панорамным окном; оба стоят на ковре, касание открывает одежду */
 .room {
   position: relative;
   aspect-ratio: 3 / 2;
@@ -378,7 +378,7 @@ main > .scene {
 
 .room-hero {
   position: absolute;
-  bottom: 5%;
+  bottom: 12%;
   width: 38%;
   padding: 0;
   border: 0;

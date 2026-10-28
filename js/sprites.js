@@ -30,7 +30,7 @@ export const BASE = {
 export const WHO = ['elisey', 'nelya'];
 /** Образы каждого: первый базовый. Картинка берется по `${кто}-${образ}-${поза}`. */
 export const LOOKS = [
-  ['base', 'summer', 'sport', 'city'],
+  ['base', 'summer', 'sport', 'city', 'winter'],
   ['base', 'casual', 'winter', 'sport', 'dressy'],
 ];
 export const POSES = ['idle', 'fit', 'cough', 'sleep'];
