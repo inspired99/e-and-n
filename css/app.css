@@ -501,16 +501,16 @@ main > .scene {
   transform: translateY(3px);
 }
 
-/* поцелуй: одно сердце без подписи, название в aria-label. Стоит между персонажами на уровне груди:
-   окно со снегом открыто, а середина комнаты свободна (Елисей до 46% ширины, Неля от 57%) */
+/* поцелуй: одно сердце без подписи, название в aria-label. Стоит между персонажами на уровне пояса:
+   окно со снегом открыто. По ширине не центр комнаты, а середина между фигурами: у Елисея руки шире */
 .kiss-btn {
   position: absolute;
-  top: 56%;
-  left: 50%;
+  top: 70%;
+  left: 52.5%;
   display: inline-grid;
   place-items: center;
-  width: 52px;
-  height: 52px;
+  width: 38px;
+  height: 38px;
   padding: 0;
   border: 2px solid var(--ink);
   border-radius: var(--r-btn);
@@ -524,6 +524,13 @@ main > .scene {
 .kiss-btn:active {
   transform: translate(-50%, calc(3px - 50%));
   box-shadow: none;
+}
+
+/* сердце маленькое, а касание остается удобным: невидимое поле вокруг до 50 px */
+.kiss-btn::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
 }
 
 @media (hover: hover) {

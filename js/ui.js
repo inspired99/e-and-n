@@ -169,7 +169,7 @@ function board(m) {
 
 /** Поцелуй: сердце между персонажами, в свободной середине комнаты, окно со снегом не закрывает. */
 function kissButton(m) {
-  return `<button class="kiss-btn" type="button" data-act="kiss" data-key="kiss" aria-label="отправить поцелуй: ${esc(m.players[m.other].name)}">${icon('heart', { scale: 3 })}</button>`;
+  return `<button class="kiss-btn" type="button" data-act="kiss" data-key="kiss" aria-label="отправить поцелуй: ${esc(m.players[m.other].name)}">${icon('heart', { scale: 2 })}</button>`;
 }
 
 /**
