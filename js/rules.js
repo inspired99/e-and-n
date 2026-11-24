@@ -369,6 +369,12 @@ export function seasonOf(day) {
   return 'autumn';
 }
 
+/** Новогодняя комната: с начала зимы 15.11 по старый Новый год 14.01 включительно. */
+export function isNewYearDay(day) {
+  const md = day.slice(5, 10);
+  return md >= '11-15' || md <= '01-14';
+}
+
 /** День, вечер или ночь в этот час по часам этого сезона. */
 export function timeOfDay(season, hour) {
   const [day, evening, night] = DAY_HOURS[season] || DAY_HOURS.autumn;
@@ -382,13 +388,17 @@ export function timeOfDay(season, hour) {
  * Часы дня, вечера и ночи всегда по настоящему сезону: свет за окном от выбранной картинки не меняется.
  */
 export function sceneAt(date, { season = 'auto', time = 'auto' } = {}) {
-  const autoSeason = seasonOf(moscowDay(date));
+  const day = moscowDay(date);
+  const autoSeason = seasonOf(day);
   const autoTime = timeOfDay(autoSeason, moscowHour(date));
+  const shown = SEASONS.includes(season) ? season : autoSeason;
   return {
-    season: SEASONS.includes(season) ? season : autoSeason,
+    season: shown,
     time: TIMES.includes(time) ? time : autoTime,
     autoSeason,
     autoTime,
+    // елка и гирлянды стоят, пока зима и на календаре праздники
+    festive: shown === 'winter' && isNewYearDay(day),
   };
 }
 

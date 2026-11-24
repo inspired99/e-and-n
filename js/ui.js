@@ -174,37 +174,54 @@ function kissButton(m) {
 
 /**
  * Снег за панорамным окном: три стекла между рамами, у каждого свои снежинки.
+ * Снежинки нарисованы: assets/snow (лист assets/src/snow.png, нарезка tools/sprites.mjs snow).
+ * Три слоя глубины: дальние мелкие и тусклые падают медленно, средние быстрее,
+ * ближние крупные кристаллы быстрее всех и кружатся на лету.
  * Расстановка своя у каждой снежинки, но одна и та же при каждой отрисовке: экран не мигает.
  */
-const PANES = [8, 18, 8];
+const PANES = [9, 22, 9];
+const SNOW_KINDS = {
+  far: ['puff-1', 'puff-2', 'spark-2'],
+  mid: ['spark-1', 'spark-2', 'puff-2'],
+  near: ['flake-1', 'flake-2', 'flake-3', 'flake-4'],
+};
 const FLAKES = (() => {
   let seed = 7;
   const rnd = () => {
     seed = (seed * 16807) % 2147483647;
     return seed / 2147483647;
   };
+  const r1 = (v) => Math.round(v * 10) / 10;
+  const r2 = (v) => Math.round(v * 100) / 100;
+  const side = () => (rnd() < 0.5 ? -1 : 1);
   return PANES.map((n) =>
     Array.from({ length: n }, () => {
-      const size = rnd();
-      // крупные падают быстрее: ближе к окну
-      const s = size < 0.5 ? 2 : size < 0.82 ? 3 : 4;
+      const depth = rnd();
+      const layer = depth < 0.45 ? 'far' : depth < 0.78 ? 'mid' : 'near';
+      const kinds = SNOW_KINDS[layer];
+      const t = layer === 'near' ? 5 + rnd() * 1.5 : layer === 'mid' ? 7 + rnd() * 2 : 10 + rnd() * 3;
       return {
+        kind: kinds[Math.floor(rnd() * kinds.length)],
         x: Math.round(rnd() * 92 + 2),
         y: Math.round(rnd() * 90 + 4),
-        t: Math.round((s === 4 ? 4 + rnd() * 2 : s === 3 ? 5.5 + rnd() * 2.5 : 7 + rnd() * 4) * 10) / 10,
+        // размер и снос вбок в сотых долях ширины комнаты: на любом экране снег в масштабе картинки
+        s: r2(layer === 'near' ? 2.4 + rnd() : layer === 'mid' ? 1.3 + rnd() * 0.5 : 0.7 + rnd() * 0.35),
+        w: r2((layer === 'near' ? 0.9 : layer === 'mid' ? 0.6 : 0.3) + rnd() * 0.6) * side(),
+        t: r1(t),
         // старт вразнобой: снег уже идет и никогда не падает одной волной
-        d: -Math.round(rnd() * 110) / 10,
-        // снос вбок у каждой своя сторона и сила
-        w: Math.round((rnd() * 2 - 1) * 5),
-        s,
+        d: -r1(rnd() * t),
+        sw: r1(2.2 + rnd() * 1.8),
+        r: layer === 'near' ? Math.round(25 + rnd() * 35) * side() : 0,
+        o: layer === 'far' ? r2(0.5 + rnd() * 0.2) : layer === 'mid' ? r2(0.8 + rnd() * 0.15) : 1,
       };
     }),
   );
 })();
 
 export function snowLayer() {
-  const pane = (flakes, i) =>
-    `<div class="pane pane-${i}">${flakes.map((f) => `<i class="flake" style="--x: ${f.x}%; --y: ${f.y}%; --t: ${f.t}s; --d: ${f.d}s; --w: ${f.w}px; --s: ${f.s}px"></i>`).join('')}</div>`;
+  const flake = (f) =>
+    `<i class="flake" style="--x: ${f.x}%; --y: ${f.y}%; --s: ${f.s}; --w: ${f.w}; --t: ${f.t}s; --d: ${f.d}s; --sw: ${f.sw}s; --r: ${f.r}deg; --o: ${f.o}"><img src="assets/snow/${f.kind}.webp" width="48" height="48" alt="" decoding="async" draggable="false"></i>`;
+  const pane = (flakes, i) => `<div class="pane pane-${i}">${flakes.map(flake).join('')}</div>`;
   return `<div class="snow" aria-hidden="true">${FLAKES.map(pane).join('')}</div>`;
 }
 
@@ -215,12 +232,13 @@ function lightLayer(light) {
 }
 
 function scene(m) {
-  const { season, time } = m.scene;
-  const art = roomArt(season, time);
+  const { season, time, festive } = m.scene;
+  const art = roomArt(season, time, undefined, festive);
+  const ny = art.file && art.file.includes('room-newyear-');
   const bg = art.file ? ` background-image: url('${art.file}');` : '';
   const snow = season === 'winter' && time !== 'day' ? snowLayer() : '';
   return `<section class="scene" aria-label="комната">
-    <div class="room" data-season="${season}" data-time="${time}" style="--stature: ${STATURE[1]};${bg}">${lightLayer(art.light)}${snow}${roomHero(m, 0)}${roomHero(m, 1)}${kissButton(m)}</div>
+    <div class="room" data-season="${season}" data-time="${time}"${ny ? ' data-newyear' : ''} style="--stature: ${STATURE[1]};${bg}">${lightLayer(art.light)}${snow}${roomHero(m, 0)}${roomHero(m, 1)}${kissButton(m)}</div>
     ${board(m)}
   </section>`;
 }

@@ -391,6 +391,10 @@ main > .scene {
   pointer-events: none;
 }
 
+.snow {
+  container-type: inline-size;
+}
+
 .light-night {
   background: var(--night-shade);
   mix-blend-mode: multiply;
@@ -441,24 +445,27 @@ main > .scene {
   width: 10.3%;
 }
 
-/* снежинка: квадратик в верху столбца высотой во все стекло; столбец едет вниз на свою высоту */
+/* в новогодней комнате звезда и верхушка елки заходят в правое стекло: снег идет за ними, а не перед ними */
+.room[data-newyear] .pane-2 {
+  clip-path: polygon(0 0, 100% 0, 100% 80%, 94% 76%, 94% 60%, 64% 60%, 64% 76%, 52% 84%, 42% 100%, 0 100%);
+}
+
+/* снежинка: картинка в верху столбца высотой во все стекло; столбец едет вниз через все стекло.
+   размер и снос в сотых ширины комнаты (cqw от .snow), поэтому снег в масштабе картинки на любом экране */
 .flake {
   position: absolute;
   top: 0;
   left: var(--x);
-  width: var(--s);
+  width: calc(var(--s) * 1cqw);
   height: 100%;
-  transform: translateY(calc(var(--y) - 100%));
+  transform: translateY(var(--y));
 }
 
-.flake::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: var(--s);
-  height: var(--s);
-  background: var(--snow);
+.flake img {
+  display: block;
+  width: 100%;
+  height: auto;
+  opacity: var(--o);
 }
 
 .room-hero {
@@ -2356,9 +2363,13 @@ ol.rule-list .rule h2::before {
 /* --- движение ------------------------------------------------------------------ */
 
 @media (prefers-reduced-motion: no-preference) {
-  /* снег падает рывками, как в старых играх; без движения снежинки просто висят */
+  /* снег падает ровно и покачивается, ближние кристаллы кружатся; без движения снежинки просто висят */
   .flake {
-    animation: snow-fall var(--t) steps(30, end) var(--d) infinite;
+    animation: snow-fall var(--t) linear var(--d) infinite;
+  }
+
+  .flake img {
+    animation: snow-sway var(--sw) ease-in-out var(--d) infinite alternate;
   }
 
   .spark {
@@ -2408,26 +2419,25 @@ ol.rule-list .rule h2::before {
   }
 }
 
-/* падение во все стекло и снос вбок туда и обратно, у каждой снежинки свой (--w) */
+/* падение через все стекло: от чуть выше верхней рамы до нижней, там снежинка уже скрыта */
 @keyframes snow-fall {
-  0% {
-    transform: translateY(-100%) translateX(0);
+  from {
+    transform: translateY(calc(var(--s) * -1cqw));
   }
 
-  25% {
-    transform: translateY(-74%) translateX(var(--w));
+  to {
+    transform: translateY(100%);
+  }
+}
+
+/* покачивание вбок туда и обратно, у каждой снежинки свой снос (--w) и поворот (--r) */
+@keyframes snow-sway {
+  from {
+    transform: translateX(calc(var(--w) * -1cqw)) rotate(calc(var(--r) * -1));
   }
 
-  50% {
-    transform: translateY(-48%) translateX(0);
-  }
-
-  75% {
-    transform: translateY(-22%) translateX(calc(-1 * var(--w)));
-  }
-
-  100% {
-    transform: translateY(4%) translateX(0);
+  to {
+    transform: translateX(calc(var(--w) * 1cqw)) rotate(var(--r));
   }
 }
 

@@ -465,10 +465,13 @@ const timeDist = (a, b) => Math.abs(TIME_LINE.indexOf(a) - TIME_LINE.indexOf(b))
  * Картинка комнаты для сезона и времени суток. Если такой еще не нарисовано, берется ближайшая:
  * сначала то же время суток (свет важнее), потом соседний сезон. Когда время у картинки другое,
  * поверх кладется свет нужного времени суток: light это 'day', 'evening', 'night' или null.
+ * В праздники (festive) берется новогодняя комната newyear-<время>, если она нарисована.
  */
-export function roomArt(season, time, available = ROOM_ART) {
+export function roomArt(season, time, available = ROOM_ART, festive = false) {
+  if (festive && available.includes(`newyear-${time}`)) return { file: `assets/bg/room-newyear-${time}.webp`, light: null };
   let best = null;
   for (const name of available) {
+    if (name.startsWith('newyear-')) continue;
     const [s, t] = name.split('-');
     const score = timeDist(t, time) * 10 + seasonDist(s, season);
     if (!best || score < best.score) best = { name, t, score };

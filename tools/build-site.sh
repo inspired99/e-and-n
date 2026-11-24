@@ -14,7 +14,7 @@ cd "$root"
 mkdir -p "$out/assets"
 cp index.html manifest.webmanifest config.js .nojekyll "$out/"
 cp -R css js "$out/"
-cp -R assets/bg assets/sprites assets/props "$out/assets/"
+cp -R assets/bg assets/sprites assets/props assets/snow "$out/assets/"
 cp assets/icon-*.png "$out/assets/"
 find "$out/assets" -name '*.json' -exec rm -f {} +
 

@@ -21,6 +21,7 @@ import {
   seasonOf,
   timeOfDay,
   sceneAt,
+  isNewYearDay,
   praiseFor,
   monthStory,
   storyDue,
@@ -305,9 +306,9 @@ test('время суток: часы каждого сезона, края вк
 
 test('сейчас в комнате: по Москве, 23:30 UTC это уже ночь следующего дня', () => {
   assert.equal(moscowHour(new Date('2026-11-23T23:30:00Z')), 2);
-  assert.deepEqual(sceneAt(new Date('2026-11-23T23:30:00Z')), { season: 'winter', time: 'night', autoSeason: 'winter', autoTime: 'night' });
+  assert.deepEqual(sceneAt(new Date('2026-11-23T23:30:00Z')), { season: 'winter', time: 'night', autoSeason: 'winter', autoTime: 'night', festive: true });
   // 14 ноября 20:59 по Москве: еще осень и вечер; 21:00 уже ночь
-  assert.deepEqual(sceneAt(new Date('2026-11-14T17:59:00Z')), { season: 'autumn', time: 'evening', autoSeason: 'autumn', autoTime: 'evening' });
+  assert.deepEqual(sceneAt(new Date('2026-11-14T17:59:00Z')), { season: 'autumn', time: 'evening', autoSeason: 'autumn', autoTime: 'evening', festive: false });
   assert.equal(sceneAt(new Date('2026-11-14T18:00:00Z')).time, 'night');
   // 15 ноября 00:30 по Москве (14-го 21:30 UTC): уже зима
   assert.equal(sceneAt(new Date('2026-11-14T21:30:00Z')).season, 'winter');
@@ -318,6 +319,16 @@ test('сейчас в комнате: по Москве, 23:30 UTC это уже
   assert.deepEqual([forced.season, forced.time], ['summer', 'day']);
   assert.equal(sceneAt(new Date('2026-12-10T09:00:00Z'), { time: 'night' }).time, 'night');
   assert.equal(sceneAt(new Date('2026-12-10T09:00:00Z'), { season: 'нет такого' }).season, 'winter');
+});
+
+test('новогодняя комната: с 15 ноября по 14 января, только зимой', () => {
+  const cases = { '2026-11-14': false, '2026-11-15': true, '2026-12-31': true, '2027-01-01': true, '2027-01-14': true, '2027-01-15': false, '2027-02-20': false, '2027-07-01': false };
+  for (const [day, want] of Object.entries(cases)) assert.equal(isNewYearDay(day), want, day);
+  // 14 января 23:30 по Москве еще праздник, 15 января 00:30 уже нет
+  assert.equal(sceneAt(new Date('2027-01-14T20:30:00Z')).festive, true);
+  assert.equal(sceneAt(new Date('2027-01-14T21:30:00Z')).festive, false);
+  // выбрано лето на устройстве: елки нет даже в праздники
+  assert.equal(sceneAt(new Date('2026-12-10T09:00:00Z'), { season: 'summer' }).festive, false);
 });
 
 /** Цифры месяца для проверки похвалы. */

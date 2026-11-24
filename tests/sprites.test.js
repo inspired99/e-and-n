@@ -52,3 +52,12 @@ test('ближайшая картинка: сначала то же время �
   assert.deepEqual(roomArt('winter', 'day', ['winter-night']), { file: 'assets/bg/room-winter-night.webp', light: 'day' });
   assert.deepEqual(roomArt('spring', 'day', []), { file: null, light: 'day' });
 });
+
+test('новогодняя комната: в праздники своя картинка, в остальные дни ее нет даже как запасной', () => {
+  const list = ['winter-night', 'newyear-night', 'newyear-evening'];
+  assert.deepEqual(roomArt('winter', 'night', list, true), { file: 'assets/bg/room-newyear-night.webp', light: null });
+  assert.deepEqual(roomArt('winter', 'night', list, false), { file: 'assets/bg/room-winter-night.webp', light: null });
+  // нет новогоднего дня: обычный зимний подбор, без елки
+  assert.equal(roomArt('winter', 'day', list, true).file, 'assets/bg/room-winter-night.webp');
+  assert.equal(roomArt('autumn', 'evening', ['newyear-evening', 'autumn-night'], false).file, 'assets/bg/room-autumn-night.webp');
+});

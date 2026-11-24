@@ -3,6 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { demoState } from '../js/demo.js';
 import { buildModel } from '../js/model.js';
 import { FOOD, addDays } from '../js/rules.js';
@@ -249,7 +250,11 @@ test('комната зимой: вечером и ночью снег за ок
   const evening = UI.page(model({ scene: winter('evening') }));
   assert.match(evening, bg('winter-evening'));
   assert.match(evening, /<div class="snow" aria-hidden="true"><div class="pane pane-0">/);
-  assert.equal(evening.split('class="flake"').length - 1, 34); // несколько десятков, три стекла
+  assert.equal(evening.split('class="flake"').length - 1, 40); // несколько десятков, три стекла
+  // снежинки нарисованы: кристаллы, звездочки и комочки, каждая картинка есть в assets/snow
+  const kinds = new Set([...evening.matchAll(/src="assets\/snow\/([a-z0-9-]+)\.webp"/g)].map((x) => x[1]));
+  assert.ok(kinds.size >= 6, `видов снежинок: ${kinds.size}`);
+  for (const k of kinds) assert.ok(fs.existsSync(`assets/snow/${k}.webp`), k);
   assert.equal(evening.split('class="pane ').length - 1, 3);
   assert.doesNotMatch(evening, /class="light /); // вечер нарисован: свет не нужен
   // снег стоит до персонажей: они рисуются поверх
@@ -264,6 +269,16 @@ test('комната зимой: вечером и ночью снег за ок
   const autumn = UI.page(model({ scene: { season: 'autumn', time: 'evening', autoSeason: 'autumn', autoTime: 'evening' } }));
   assert.doesNotMatch(autumn, /class="snow"|class="light /);
   assert.equal(UI.snowLayer(), UI.snowLayer()); // снежинки не прыгают между отрисовками
+});
+
+test('новогодняя комната: в праздники елка, снег справа обрезан по ее верхушке', () => {
+  const ny = (time) => UI.page(model({ scene: { ...winter(time), festive: true } }));
+  for (const time of ['day', 'evening', 'night']) {
+    assert.match(ny(time), new RegExp(`class="room" data-season="winter" data-time="${time}" data-newyear [^>]*room-newyear-${time}\\.webp`));
+  }
+  assert.match(ny('night'), /class="snow"/);
+  assert.doesNotMatch(ny('day'), /class="snow"/);
+  assert.doesNotMatch(UI.page(model({ scene: winter('evening') })), /data-newyear/);
 });
 
 test('меню: сезон и время суток, авто с тем, что сейчас по Москве', () => {

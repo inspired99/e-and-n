@@ -1,6 +1,6 @@
 // Картинки комнаты по сезону и времени суток.
 //   node tools/rooms.mjs
-// Берет assets/src/rooms/<сезон>-<время>.png (сезон winter, spring, summer, autumn; время day, evening, night),
+// Берет assets/src/rooms/<сезон>-<время>.png (сезон winter, spring, summer, autumn или newyear; время day, evening, night),
 // уменьшает до 1280 px по ширине, пишет assets/bg/room-<сезон>-<время>.webp и список готовых картинок
 // в js/room-art.js. По этому списку приложение выбирает картинку и не просит несуществующих файлов.
 // Нужны ffmpeg и cwebp.
@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const SEASONS = ['winter', 'spring', 'summer', 'autumn'];
+const SEASONS = ['winter', 'spring', 'summer', 'autumn', 'newyear']; // newyear: зимняя комната с елкой, в праздники
 const TIMES = ['day', 'evening', 'night'];
 const SRC = 'assets/src/rooms';
 const OUT = 'assets/bg';

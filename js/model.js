@@ -30,7 +30,7 @@ export function buildModel(state, today, view) {
   const board = view.board === 'food' ? 'food' : 'tracker';
   // сезон и время суток считает main.js по часам; без них (в тестах) вечер этого сезона
   const autoSeason = R.seasonOf(today);
-  const scene = view.scene || { season: autoSeason, time: 'evening', autoSeason, autoTime: 'evening' };
+  const scene = view.scene || { season: autoSeason, time: 'evening', autoSeason, autoTime: 'evening', festive: autoSeason === 'winter' && R.isNewYearDay(today) };
   const curStart = R.weekOf(today);
   const firstView = today < s.start ? s.start : curStart;
   const weeks = R.timeline(state, today);

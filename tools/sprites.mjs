@@ -2,6 +2,7 @@
 //   node tools/sprites.mjs looks                 все образы из assets/src/looks/<кто>-<образ>.png|webp, 2 на 2
 //   node tools/sprites.mjs look <лист> <кто>-<образ>   один лист образа
 //   node tools/sprites.mjs props [assets/src/props.png]   декор, 4 на 2
+//   node tools/sprites.mjs snow [assets/src/snow.png]     снежинки за окном, 4 на 2
 // Лист на пурпурном фоне. Скрипт убирает фон, находит границы ячеек по пустым полосам
 // и пишет WebP. Нужны ffmpeg и cwebp (без cwebp останется PNG), зависимостей из npm нет.
 // Позы листа образа: слева направо и сверху вниз обычная, в форме, кашель с облачком, спит.
@@ -38,6 +39,17 @@ const LAYOUTS = {
     ],
     together: [['torch-1', 'torch-2']],
     keep: ['lantern', 'leaf-orange', 'leaf-yellow', 'candle'],
+  },
+  // снежинки: каждая по центру своего квадрата (вертится вокруг середины), сторона 48
+  snow: {
+    src: 'assets/src/snow.png',
+    out: 'assets/snow',
+    fit: 'center',
+    side: 48,
+    names: [
+      ['flake-1', 'flake-2', 'flake-3', 'flake-4'],
+      ['spark-1', 'spark-2', 'puff-1', 'puff-2'],
+    ],
   },
 };
 
@@ -164,6 +176,15 @@ for (const box of cells) {
     box.dy = side - PAD - box.h;
     continue;
   }
+  if (layout.fit === 'center') {
+    // свой квадрат по большей стороне содержимого, содержимое по центру
+    const sq = Math.max(box.w, box.h) + PAD * 2;
+    box.cw = sq;
+    box.ch = sq;
+    box.dx = Math.floor((sq - box.w) / 2);
+    box.dy = Math.floor((sq - box.h) / 2);
+    continue;
+  }
   // по содержимому; кадры одной анимации получают общий холст и общий левый нижний угол
   const group = (layout.together || []).find((g) => g.includes(box.name)) || [box.name];
   const mates = cells.filter((x) => group.includes(x.name));
@@ -218,5 +239,5 @@ if (cmd === 'looks') {
 } else if (LAYOUTS[cmd]) {
   slice(cmd, LAYOUTS[cmd], a || LAYOUTS[cmd].src);
 } else {
-  throw new Error('нужно: looks, look <лист> <кто>-<образ> или props');
+  throw new Error('нужно: looks, look <лист> <кто>-<образ>, props или snow');
 }
