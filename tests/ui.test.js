@@ -244,9 +244,10 @@ test('настоящий дневник с переносом октября: ш
 
 const winter = (time) => ({ season: 'winter', time, autoSeason: 'winter', autoTime: time });
 
-test('комната зимой: вечером и ночью снег за окном, днем нет; свет вместо ненарисованной картинки', () => {
+test('комната зимой: вечером и ночью снег за окном, днем нет; все три зимние картинки нарисованы, свет не нужен', () => {
+  const bg = (name) => new RegExp(`class="room"[^>]*background-image: url\\('assets/bg/room-${name}\\.webp'\\)`);
   const evening = UI.page(model({ scene: winter('evening') }));
-  assert.match(evening, /class="room" data-season="winter" data-time="evening"[^>]*background-image: url\('assets\/bg\/room-autumn-evening\.webp'\)/);
+  assert.match(evening, bg('winter-evening'));
   assert.match(evening, /<div class="snow" aria-hidden="true"><div class="pane pane-0">/);
   assert.equal(evening.split('class="flake"').length - 1, 34); // несколько десятков, три стекла
   assert.equal(evening.split('class="pane ').length - 1, 3);
@@ -254,12 +255,12 @@ test('комната зимой: вечером и ночью снег за ок
   // снег стоит до персонажей: они рисуются поверх
   assert.ok(evening.indexOf('class="snow"') < evening.indexOf('class="room-hero '));
   const night = UI.page(model({ scene: winter('night') }));
-  assert.match(night, /<span class="light light-night" aria-hidden="true"><\/span><span class="glow" aria-hidden="true"><\/span>/);
+  assert.match(night, bg('winter-night'));
   assert.match(night, /class="snow"/);
-  assert.ok(night.indexOf('class="light') < night.indexOf('class="room-hero '));
+  assert.doesNotMatch(night, /class="light |class="glow"/);
   const day = UI.page(model({ scene: winter('day') }));
-  assert.doesNotMatch(day, /class="snow"/);
-  assert.match(day, /class="light light-day"/);
+  assert.match(day, bg('winter-day'));
+  assert.doesNotMatch(day, /class="snow"|class="light /);
   const autumn = UI.page(model({ scene: { season: 'autumn', time: 'evening', autoSeason: 'autumn', autoTime: 'evening' } }));
   assert.doesNotMatch(autumn, /class="snow"|class="light /);
   assert.equal(UI.snowLayer(), UI.snowLayer()); // снежинки не прыгают между отрисовками
