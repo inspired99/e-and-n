@@ -167,7 +167,7 @@ function board(m) {
   </div>`;
 }
 
-/** Поцелуй: сердце наверху комнаты, над головами, чтобы не задевать касание по персонажам. */
+/** Поцелуй: сердце между персонажами, в свободной середине комнаты, окно со снегом не закрывает. */
 function kissButton(m) {
   return `<button class="kiss-btn" type="button" data-act="kiss" data-key="kiss" aria-label="отправить поцелуй: ${esc(m.players[m.other].name)}">${icon('heart', { scale: 3 })}</button>`;
 }
@@ -205,8 +205,8 @@ const FLAKES = (() => {
         x: Math.round(rnd() * 92 + 2),
         y: Math.round(rnd() * 90 + 4),
         // размер и снос вбок в сотых долях ширины комнаты: на любом экране снег в масштабе картинки
-        s: r2(layer === 'near' ? 2.4 + rnd() : layer === 'mid' ? 1.3 + rnd() * 0.5 : 0.7 + rnd() * 0.35),
-        w: r2((layer === 'near' ? 0.9 : layer === 'mid' ? 0.6 : 0.3) + rnd() * 0.6) * side(),
+        s: r2(layer === 'near' ? 1.75 + rnd() * 0.7 : layer === 'mid' ? 1 + rnd() * 0.35 : 0.55 + rnd() * 0.25),
+        w: r2((layer === 'near' ? 0.7 : layer === 'mid' ? 0.45 : 0.25) + rnd() * 0.5) * side(),
         t: r1(t),
         // старт вразнобой: снег уже идет и никогда не падает одной волной
         d: -r1(rnd() * t),

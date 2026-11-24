@@ -501,11 +501,11 @@ main > .scene {
   transform: translateY(3px);
 }
 
-/* поцелуй: сердце наверху комнаты, над головами персонажей */
-/* поцелуй: одно сердце без подписи, название в aria-label */
+/* поцелуй: одно сердце без подписи, название в aria-label. Стоит между персонажами на уровне груди:
+   окно со снегом открыто, а середина комнаты свободна (Елисей до 46% ширины, Неля от 57%) */
 .kiss-btn {
   position: absolute;
-  top: var(--s2);
+  top: 56%;
   left: 50%;
   display: inline-grid;
   place-items: center;
@@ -518,11 +518,11 @@ main > .scene {
   box-shadow: var(--drop-btn);
   font-weight: 600;
   color: var(--ink);
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
 }
 
 .kiss-btn:active {
-  transform: translate(-50%, 3px);
+  transform: translate(-50%, calc(3px - 50%));
   box-shadow: none;
 }
 
