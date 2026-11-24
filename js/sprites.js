@@ -1,6 +1,8 @@
 // Пиксельная графика E&N. Значки и наклейки заданы сетками строк
 // (символ задает цвет) и рисуются в SVG: один path на цвет, масштаб без размытия.
 
+import { ROOM_ART } from './room-art.js';
+
 const INK = '#171717';
 const PAPER = '#fdfbf9';
 
@@ -201,6 +203,21 @@ const ICONS = {
     '.KKTTTTTTKK.',
     '...KKKKKK...',
     '............',
+  ],
+  // звездочка для итога месяца
+  star: [
+    '.....KK.....',
+    '....KYYK....',
+    '....KYYK....',
+    'KKKKKYYKKKKK',
+    'KYYYYYYYYYYK',
+    '.KYYYYYYYYK.',
+    '..KYYYYYYK..',
+    '..KYYYYYYK..',
+    '.KYYYKKYYYK.',
+    '.KYYK..KYYK.',
+    'KYKK....KKYK',
+    'KK........KK',
   ],
   // поцелуй: пиксельное сердце с бликом
   heart: [
@@ -432,6 +449,32 @@ export const STATURE = [1, 0.84];
 export function heroTogether(who, look = 'base', pose = 'idle', { size = 72, ...opts } = {}) {
   const px = Math.round(size * (STATURE[who] || 1));
   return `<span class="stand" style="--stand: ${size}px">${picture(heroName(who, look, pose), { size: px, ...opts })}</span>`;
+}
+
+// --- комната по сезону и времени суток ---------------------------------------------
+
+const SEASON_RING = ['winter', 'spring', 'summer', 'autumn'];
+const TIME_LINE = ['day', 'evening', 'night'];
+const seasonDist = (a, b) => {
+  const d = Math.abs(SEASON_RING.indexOf(a) - SEASON_RING.indexOf(b));
+  return Math.min(d, 4 - d);
+};
+const timeDist = (a, b) => Math.abs(TIME_LINE.indexOf(a) - TIME_LINE.indexOf(b));
+
+/**
+ * Картинка комнаты для сезона и времени суток. Если такой еще не нарисовано, берется ближайшая:
+ * сначала то же время суток (свет важнее), потом соседний сезон. Когда время у картинки другое,
+ * поверх кладется свет нужного времени суток: light это 'day', 'evening', 'night' или null.
+ */
+export function roomArt(season, time, available = ROOM_ART) {
+  let best = null;
+  for (const name of available) {
+    const [s, t] = name.split('-');
+    const score = timeDist(t, time) * 10 + seasonDist(s, season);
+    if (!best || score < best.score) best = { name, t, score };
+  }
+  if (!best) return { file: null, light: time === 'evening' ? null : time };
+  return { file: `assets/bg/room-${best.name}.webp`, light: best.t === time ? null : time };
 }
 
 // Декор нарисован владельцем для fixgaz: assets/src/props.png, нарезка tools/sprites.mjs props.

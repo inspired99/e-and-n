@@ -42,6 +42,14 @@ export const prefs = {
   /** Время последнего показанного поцелуя этому человеку на этом устройстве: чтобы не показывать дважды. */
   kissSeen: (room, who) => Number(ls.get(`en:kissSeen:${room}:p${who}`)) || 0,
   setKissSeen: (room, who, at) => ls.set(`en:kissSeen:${room}:p${who}`, at),
+  /** Свой сезон и время суток в комнате на этом устройстве: 'auto' или значение. */
+  season: () => ls.get('en:season') || 'auto',
+  setSeason: (v) => ls.set('en:season', v),
+  time: () => ls.get('en:time') || 'auto',
+  setTime: (v) => ls.set('en:time', v),
+  /** Последний месяц, итог которого этому человеку показан на этом устройстве. */
+  storyShown: (room, who) => ls.get(`en:story:${room}:p${who}`),
+  setStoryShown: (room, who, month) => ls.set(`en:story:${room}:p${who}`, month),
 };
 
 /** Что это устройство знает о дневнике: последний снимок и неотправленные записи. Пусто, если не знает ничего. */

@@ -28,6 +28,9 @@ export function buildModel(state, today, view) {
   const s = R.normalize(state.settings);
   const { me, mode = 'week', screen = 'home' } = view;
   const board = view.board === 'food' ? 'food' : 'tracker';
+  // сезон и время суток считает main.js по часам; без них (в тестах) вечер этого сезона
+  const autoSeason = R.seasonOf(today);
+  const scene = view.scene || { season: autoSeason, time: 'evening', autoSeason, autoTime: 'evening' };
   const curStart = R.weekOf(today);
   const firstView = today < s.start ? s.start : curStart;
   const weeks = R.timeline(state, today);
@@ -58,6 +61,8 @@ export function buildModel(state, today, view) {
     view: weekAt(viewStart),
     mode,
     board,
+    scene,
+    scenePref: view.scenePref || { season: 'auto', time: 'auto' },
     canPrev: viewStart > minView,
     canNext: viewStart < maxView,
     month,

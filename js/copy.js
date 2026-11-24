@@ -73,6 +73,17 @@ export function plural(n, one, few, many) {
 
 export const nDays = (n) => `${n} ${plural(n, 'день', 'дня', 'дней')}`;
 export const nWeeks = (n) => `${n} ${plural(n, 'неделя', 'недели', 'недель')}`;
+const MONTH_PREP = ['январе', 'феврале', 'марте', 'апреле', 'мае', 'июне', 'июле', 'августе', 'сентябре', 'октябре', 'ноябре', 'декабре'];
+/** 'YYYY-MM' -> «в октябре» без предлога: «октябре». */
+export const monthPrep = (month) => MONTH_PREP[Number(month.slice(5, 7)) - 1];
+
+export const SEASON_NAME = { winter: 'зима', spring: 'весна', summer: 'лето', autumn: 'осень' };
+export const TIME_NAME = { day: 'день', evening: 'вечер', night: 'ночь' };
+
+/** Число с одним знаком после запятой: 2,7. */
+export const dec = (x) => String(x).replace('.', ',');
+export const nProducts = (n) => `${n} ${plural(n, 'продукт', 'продукта', 'продуктов')}`;
+
 export const nTimes = (n) => `${n} ${plural(n, 'раз', 'раза', 'раз')}`;
 export const nMonths = (n) => `${n} ${plural(n, 'месяц', 'месяца', 'месяцев')}`;
 
@@ -122,6 +133,32 @@ export const STICKER = {
   cook: { name: 'готовка', how: 'Готовка дома за все время, включая то, что было до приложения.' },
   nofast: { name: 'без фастфуда', how: 'Закрытые месяцы без шаурмы, фастфуда и бургеров.' },
 };
+
+/** Строка похвалы в итоге месяца. Коды и цифры дает rules.praiseFor. */
+export function praiseText(p) {
+  switch (p.code) {
+    case 'cook-goal':
+      return `Готовка дома: ${p.done} из ${p.goal}, цель месяца набрана.`;
+    case 'food-all':
+      return `Вся еда в лимитах: ${nProducts(p.counted)} без перебора.`;
+    case 'week-goals':
+      return `Недель, где набраны цели и по спорту, и по чтению: ${p.n} из ${p.of}.`;
+    case 'more-sport':
+      return `Спорта больше, чем в ${monthPrep(p.month)}: ${p.now} против ${p.was}.`;
+    case 'more-read':
+      return `Чтения больше, чем в ${monthPrep(p.month)}: ${p.now} против ${p.was}.`;
+    case 'more-cook':
+      return `Готовки дома больше, чем в ${monthPrep(p.month)}: ${p.now} против ${p.was}.`;
+    case 'streak':
+      return `${nDays(p.len)} подряд с полезным, с ${dayNum(p.from)} по ${dayMonth(p.to)}.`;
+    case 'food-most':
+      return `В лимитах ${nProducts(p.n)} из ${p.of}.`;
+    case 'steady':
+      return `Полезных отметок за месяц: ${p.n}.`;
+    default:
+      return 'Этот месяц в дневнике тихий. Новый уже начался.';
+  }
+}
 
 export const SYNC = {
   online: 'на связи',

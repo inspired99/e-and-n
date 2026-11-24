@@ -57,7 +57,7 @@ test('под комнатой переключатель: трекер без е
 });
 
 test('рядом Неля около 90% роста Елисея: в комнате, на выборе и в шапках таблиц', () => {
-  assert.match(UI.page(model({})), /class="room" style="--stature: 0\.84"/);
+  assert.match(UI.page(model({})), /class="room"[^>]*style="--stature: 0\.84;/);
   const who = UI.whoAreYou([{ name: 'Елисей' }, { name: 'Неля' }]);
   assert.match(who, /class="stand" style="--stand: 136px"><img[^>]*elisey-base-idle\.webp" width="136"/);
   assert.match(who, /class="stand" style="--stand: 136px"><img[^>]*nelya-base-idle\.webp" width="114"/);
@@ -240,4 +240,57 @@ test('настоящий дневник с переносом октября: ш
   assert.match(html, /<span>готовка<\/span><\/dt><dd><b>1<\/b> из 5[^]*<span>готовка<\/span><\/dt><dd><b>4<\/b> из 5/);
   // утро: никто ничего не отметил, оба спят
   assert.equal(html.split('-sleep.webp').length - 1, 2);
+});
+
+const winter = (time) => ({ season: 'winter', time, autoSeason: 'winter', autoTime: time });
+
+test('комната зимой: вечером и ночью снег за окном, днем нет; свет вместо ненарисованной картинки', () => {
+  const evening = UI.page(model({ scene: winter('evening') }));
+  assert.match(evening, /class="room" data-season="winter" data-time="evening"[^>]*background-image: url\('assets\/bg\/room-autumn-evening\.webp'\)/);
+  assert.match(evening, /<div class="snow" aria-hidden="true"><div class="pane pane-0">/);
+  assert.equal(evening.split('class="flake"').length - 1, 34); // несколько десятков, три стекла
+  assert.equal(evening.split('class="pane ').length - 1, 3);
+  assert.doesNotMatch(evening, /class="light /); // вечер нарисован: свет не нужен
+  // снег стоит до персонажей: они рисуются поверх
+  assert.ok(evening.indexOf('class="snow"') < evening.indexOf('class="room-hero '));
+  const night = UI.page(model({ scene: winter('night') }));
+  assert.match(night, /<span class="light light-night" aria-hidden="true"><\/span><span class="glow" aria-hidden="true"><\/span>/);
+  assert.match(night, /class="snow"/);
+  assert.ok(night.indexOf('class="light') < night.indexOf('class="room-hero '));
+  const day = UI.page(model({ scene: winter('day') }));
+  assert.doesNotMatch(day, /class="snow"/);
+  assert.match(day, /class="light light-day"/);
+  const autumn = UI.page(model({ scene: { season: 'autumn', time: 'evening', autoSeason: 'autumn', autoTime: 'evening' } }));
+  assert.doesNotMatch(autumn, /class="snow"|class="light /);
+  assert.equal(UI.snowLayer(), UI.snowLayer()); // снежинки не прыгают между отрисовками
+});
+
+test('меню: сезон и время суток, авто с тем, что сейчас по Москве', () => {
+  const menu = UI.menuSheet(model({ scene: winter('night'), scenePref: { season: 'auto', time: 'day' } }));
+  assert.match(menu, /aria-pressed="true" data-act="scene" data-kind="season" data-v="auto"[^>]*>авто: зима</);
+  assert.match(menu, /aria-pressed="true" data-act="scene" data-kind="time" data-v="day"/);
+  for (const v of ['winter', 'spring', 'summer', 'autumn']) assert.match(menu, new RegExp(`data-kind="season" data-v="${v}"`));
+  for (const v of ['day', 'evening', 'night']) assert.match(menu, new RegExp(`data-kind="time" data-v="${v}"`));
+});
+
+test('итог месяца: лист с цифрами, похвалой и «ты молодец», без сравнения; кнопки в итогах', () => {
+  const m = model({});
+  const sheet = UI.storySheet(m, { who: 0, month: '2026-09' });
+  clean(sheet);
+  assert.match(sheet, /<h2>итог месяца<\/h2>/);
+  assert.match(sheet, /elisey-sport-fit\.webp/); // в форме
+  assert.match(sheet, /Елисей, сентябрь 2026/);
+  assert.match(sheet, /<span>спорт<\/span><\/dt><dd>\d+ раз[а]?, в среднем \d+(,\d)? в неделю/);
+  assert.match(sheet, /<span>готовка<\/span><\/dt><dd>\d+ из 5/);
+  assert.match(sheet, /<span>еда<\/span><\/dt><dd>в лимитах \d+ из 8/);
+  const praise = sheet.match(/<ul class="story-praise">([^]*?)<\/ul>/)[1];
+  const lines = praise.split('<li>').length - 1;
+  assert.ok(lines >= 2 && lines <= 3, `строк похвалы: ${lines}`);
+  assert.match(sheet, /<p class="story-end">Елисей, ты молодец<\/p>/);
+  assert.match(sheet, /data-act="story-open" data-who="1" data-month="2026-09"[^>]*>итог месяца: Неля</);
+  assert.doesNotMatch(sheet, /Неля:|лучше|против Нел|сравн|бриллиант|lvl/i);
+  // в итогах: за прошлый месяц кнопки у обоих, за текущий нет
+  const past = UI.page(model({ screen: 'stats', month: '2026-09' }));
+  assert.match(past, /data-act="story-open" data-who="0" data-month="2026-09"[^]*data-act="story-open" data-who="1" data-month="2026-09"/);
+  assert.doesNotMatch(UI.page(model({ screen: 'stats' })), /data-act="story-open"/);
 });

@@ -30,6 +30,10 @@ let homeScroll = 0;
 let viewStart = null;
 let mode = prefs.view() === 'month' ? 'month' : 'week'; // вид дневника на главной
 let boardTab = prefs.board() === 'food' ? 'food' : 'tracker'; // что под комнатой: трекер или еда, запоминается на устройстве
+// сезон и время суток в комнате: 'auto' (по Москве) или свое, запоминается на устройстве
+let scenePref = { season: prefs.season(), time: prefs.time() };
+let shownScene = null; // сезон и время суток, для которых нарисована комната
+const sceneNow = () => R.sceneAt(new Date(), scenePref);
 let month = null; // месяц на экранах итогов и питания, 'YYYY-MM'
 let sheetState = null;
 let undo = null;
@@ -51,7 +55,9 @@ function defaultStart(day) {
 // --- модель ------------------------------------------------------------------
 
 function model() {
-  const view = { me, viewStart, month, mode, board: boardTab, screen, status: store.status, pending: store.pending, kind: store.kind, build: BUILD, room: store.room, fixed: Boolean(ROOM), stray: stray ? stray.slice(0, 4) : '' };
+  const scene = sceneNow();
+  shownScene = `${scene.season}-${scene.time}`;
+  const view = { me, viewStart, month, mode, board: boardTab, scene, scenePref, screen, status: store.status, pending: store.pending, kind: store.kind, build: BUILD, room: store.room, fixed: Boolean(ROOM), stray: stray ? stray.slice(0, 4) : '' };
   shownDay = today();
   const built = buildModel(store.state, shownDay, view);
   // границы недели и месяца приводит модель, запоминаем приведенные значения
@@ -84,6 +90,7 @@ function renderSheet(m) {
   const top = sheetBody.scrollTop;
   if (sheetState.type === 'log') sheetBody.innerHTML = UI.logSheet(m, sheetState);
   else if (sheetState.type === 'look') sheetBody.innerHTML = UI.lookSheet(m, sheetState);
+  else if (sheetState.type === 'story') sheetBody.innerHTML = UI.storySheet(m, sheetState);
   else if (sheetState.type === 'goal') sheetBody.innerHTML = UI.goalSheet(m, sheetState);
   else sheetBody.innerHTML = UI.menuSheet(m);
   sheetBody.scrollTop = top;
@@ -110,6 +117,16 @@ function render() {
     renderSheet(m);
   });
   checkKisses();
+  maybeStory();
+}
+
+/** В первые 7 дней месяца один раз показываем итог прошлого месяца тому, кто сейчас выбран на устройстве. */
+function maybeStory() {
+  if (!store || me == null || sheet.open || document.visibilityState !== 'visible') return;
+  const due = R.storyDue(store.state, today(), prefs.storyShown(store.room, me));
+  if (!due) return;
+  prefs.setStoryShown(store.room, me, due);
+  openSheet({ type: 'story', who: me, month: due });
 }
 
 // --- поцелуи -----------------------------------------------------------------
@@ -302,6 +319,18 @@ const actions = {
     kissPuff(el);
     store.write([{ path: `kisses/${id}`, value: { id, from: me, to: me === 0 ? 1 : 0, at: Date.now() } }]);
     toast('поцелуй отправлен');
+  },
+  /** Итог месяца: из итогов, из самого листа (второй человек) или сам в начале месяца. */
+  'story-open'(el) {
+    openSheet({ type: 'story', who: Number(el.dataset.who), month: el.dataset.month });
+  },
+  /** Свой сезон или время суток в комнате, только на этом устройстве. */
+  scene(el) {
+    const kind = el.dataset.kind === 'time' ? 'time' : 'season';
+    const v = el.dataset.v;
+    scenePref = { ...scenePref, [kind]: v };
+    if (!isDemo) (kind === 'time' ? prefs.setTime : prefs.setSeason)(v);
+    render();
   },
   /** Лист «одежда»: касание по персонажу в комнате. */
   'look-open'(el) {
@@ -546,10 +575,12 @@ function boot() {
     if (open === 'goal') screen = 'stats';
     if (['week', 'month'].includes(params.get('view'))) mode = params.get('view');
     if (['tracker', 'food'].includes(params.get('board'))) boardTab = params.get('board');
-    if (me != null && ['log', 'menu', 'look', 'goal'].includes(open)) {
+    // в примере сезон и время суток можно задать ссылкой: &season=winter&time=night, на устройстве это не запоминается
+    scenePref = { season: params.get('season') || 'auto', time: params.get('time') || 'auto' };
+    if (me != null && ['log', 'menu', 'look', 'goal', 'story'].includes(open)) {
       const day = today();
       const step = params.get('step');
-      const state = { log: { type: 'log', day, who: me, step, group: step || params.get('group') === 'food' ? 'food' : 'good' }, look: { type: 'look', who: me }, menu: { type: 'menu' }, goal: { type: 'goal', id: 'sport' } }[open];
+      const state = { log: { type: 'log', day, who: me, step, group: step || params.get('group') === 'food' ? 'food' : 'good' }, look: { type: 'look', who: me }, story: { type: 'story', who: params.get('who') === '1' ? 1 : params.get('who') === '0' ? 0 : me, month: params.get('month') || R.addMonths(day.slice(0, 7), -1) }, menu: { type: 'menu' }, goal: { type: 'goal', id: 'sport' } }[open];
       queueMicrotask(() => openSheet(state));
     }
   } else {
@@ -644,7 +675,14 @@ document.addEventListener('touchcancel', () => {
 // Приложение с домашнего экрана может жить в памяти сутками. Наступил новый день:
 // перерисовываем сами и возвращаем дневник к текущей неделе и месяцу.
 function newDay() {
-  if (!store || !shownDay || today() === shownDay) return false;
+  if (!store || !shownDay) return false;
+  // комната меняет свет, когда наступает вечер или ночь: проверяем вместе с новым днем
+  const scene = sceneNow();
+  if (today() === shownDay && `${scene.season}-${scene.time}` === shownScene) return false;
+  if (today() === shownDay) {
+    render();
+    return true;
+  }
   viewStart = null;
   month = null;
   render();

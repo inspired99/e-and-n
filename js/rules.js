@@ -346,3 +346,135 @@ export function unseenKisses(state, who, seenAt = 0, now = Date.now()) {
   const lastKiss = fresh.reduce((a, b) => (Number(b.at) > Number(a.at) ? b : a));
   return { n: fresh.length, from: lastKiss.from === 1 ? 1 : 0, last: Number(lastKiss.at) };
 }
+
+// --- время суток и сезон ---------------------------------------------------------
+
+const MSK_HOUR = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Moscow', hour: '2-digit', hourCycle: 'h23' });
+/** Час по Москве, от 0 до 23. */
+export function moscowHour(date = new Date()) {
+  return Number(MSK_HOUR.format(date)) % 24;
+}
+
+export const SEASONS = ['winter', 'spring', 'summer', 'autumn'];
+export const TIMES = ['day', 'evening', 'night'];
+/** Во сколько по Москве начинаются день, вечер и ночь в каждом сезоне. Ночь идет до начала дня. */
+export const DAY_HOURS = { winter: [9, 16, 21], spring: [7, 19, 22], summer: [6, 20, 23], autumn: [8, 17, 21] };
+
+/** Сезон по дате: зима 15.11 - 14.03, весна 15.03 - 31.05, лето июнь - август, осень 01.09 - 14.11. */
+export function seasonOf(day) {
+  const md = day.slice(5, 10);
+  if (md >= '11-15' || md < '03-15') return 'winter';
+  if (md < '06-01') return 'spring';
+  if (md < '09-01') return 'summer';
+  return 'autumn';
+}
+
+/** День, вечер или ночь в этот час по часам этого сезона. */
+export function timeOfDay(season, hour) {
+  const [day, evening, night] = DAY_HOURS[season] || DAY_HOURS.autumn;
+  if (hour >= night || hour < day) return 'night';
+  if (hour >= evening) return 'evening';
+  return 'day';
+}
+
+/**
+ * Что сейчас в комнате: сезон и время суток по Москве, если на устройстве не выбрано свое.
+ * Часы дня, вечера и ночи всегда по настоящему сезону: свет за окном от выбранной картинки не меняется.
+ */
+export function sceneAt(date, { season = 'auto', time = 'auto' } = {}) {
+  const autoSeason = seasonOf(moscowDay(date));
+  const autoTime = timeOfDay(autoSeason, moscowHour(date));
+  return {
+    season: SEASONS.includes(season) ? season : autoSeason,
+    time: TIMES.includes(time) ? time : autoTime,
+    autoSeason,
+    autoTime,
+  };
+}
+
+// --- итог месяца: подбадривать, а не сравнивать ------------------------------------
+
+const round1 = (x) => Math.round(x * 10) / 10;
+
+/** Самая длинная серия дней подряд с полезным в месяце у человека: { len, from, to }. */
+function longestStreak(days) {
+  let best = { len: 0, from: '', to: '' };
+  let run = null;
+  for (const d of [...new Set(days)].sort()) {
+    run = run && diffDays(d, run.to) === 1 ? { ...run, to: d, len: run.len + 1 } : { len: 1, from: d, to: d };
+    if (run.len > best.len) best = run;
+  }
+  return best;
+}
+
+/** Цифры месяца у одного человека. Без сравнения со вторым и без оценок. */
+function monthFacts(state, s, who, month, today) {
+  const ms = monthSummary(state, month, today);
+  const all = live(state.events).filter((e) => e.who === who && e.day <= today);
+  const mine = all.filter((e) => e.day.slice(0, 7) === month);
+  const count = (kind) => mine.filter((e) => e.kind === kind).length;
+  const days = Number(monthEnd(month).slice(8, 10));
+  const sport = count('sport');
+  const read = count('read');
+  // недели месяца: те, у которых четверг в этом месяце, и только начатые дневником
+  const weeks = monthWeeks(month).filter((w) => addDays(w, 3).slice(0, 7) === month && (!s.start || w >= s.start) && addDays(w, 6) < today);
+  // неделя на стыке месяцев считается целиком
+  const weekCount = (kind, w) => all.filter((e) => e.kind === kind && e.day >= w && e.day <= addDays(w, 6)).length;
+  const weeksMet = weeks.filter((w) => WEEKLY.every((kind) => weekCount(kind, w) >= s.goals[kind][who])).length;
+  const foods = foodsOf(s, who);
+  return {
+    month,
+    sport,
+    read,
+    perWeek: { sport: round1(sport / (days / 7)), read: round1(read / (days / 7)) },
+    cook: ms.cook[who],
+    food: { counted: foods.length, over: ms.over[who], inLimit: foods.length - ms.over[who].length },
+    weeks: weeks.length,
+    weeksMet,
+    streak: longestStreak(mine.filter((e) => GOOD.includes(e.kind)).map((e) => e.day)),
+    useful: mine.filter((e) => GOOD.includes(e.kind)).length + (s.carry[month] ? carried(s, month, who, 'cook') : 0),
+  };
+}
+
+/**
+ * Похвала за месяц: 2-3 строки по правилам, по порядку важности. Каждая строка это код и цифры к нему,
+ * слова подставляет copy.js. Сравнение только с собой же в прошлом месяце, если тогда дневник уже был.
+ */
+export function praiseFor(facts, prev) {
+  const out = [];
+  const add = (code, data = {}) => out.push({ code, ...data });
+  if (facts.cook.goal > 0 && facts.cook.met) add('cook-goal', { done: facts.cook.done, goal: facts.cook.goal });
+  if (facts.food.counted > 0 && facts.food.over.length === 0) add('food-all', { counted: facts.food.counted });
+  if (facts.weeksMet >= 2) add('week-goals', { n: facts.weeksMet, of: facts.weeks });
+  if (prev && facts.sport > prev.sport) add('more-sport', { now: facts.sport, was: prev.sport, month: prev.month });
+  if (prev && facts.read > prev.read) add('more-read', { now: facts.read, was: prev.read, month: prev.month });
+  if (facts.streak.len >= 4) add('streak', { ...facts.streak });
+  if (prev && facts.cook.done > prev.cook.done && !out.some((p) => p.code === 'cook-goal')) add('more-cook', { now: facts.cook.done, was: prev.cook.done, month: prev.month });
+  if (facts.food.counted > 0 && facts.food.over.length > 0 && facts.food.inLimit * 2 >= facts.food.counted) add('food-most', { n: facts.food.inLimit, of: facts.food.counted });
+  const top = out.slice(0, 3);
+  if (top.length < 2) top.push(facts.useful > 0 ? { code: 'steady', n: facts.useful } : { code: 'quiet' });
+  return top;
+}
+
+/** Итог месяца у человека: цифры и похвала. */
+export function monthStory(state, who, month, today) {
+  const s = normalize(state.settings);
+  const facts = monthFacts(state, s, who, month, today);
+  const before = addMonths(month, -1);
+  const first = firstMonth(s);
+  const prev = first && before >= first ? monthFacts(state, s, who, before, today) : null;
+  return { who, ...facts, praise: praiseFor(facts, prev) };
+}
+
+/**
+ * Какой итог показать при входе: в первые 7 дней месяца, за прошлый месяц, если на этом устройстве
+ * его этому человеку еще не показывали и дневник тогда уже был. Иначе null.
+ */
+export function storyDue(state, today, shownMonth) {
+  if (Number(today.slice(8, 10)) > 7) return null;
+  const s = normalize(state.settings);
+  const prev = addMonths(today.slice(0, 7), -1);
+  const first = firstMonth(s);
+  if (!first || prev < first || shownMonth === prev) return null;
+  return prev;
+}

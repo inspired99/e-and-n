@@ -37,6 +37,14 @@
   --kiss: #ff8fd8;
   --kiss-wash: rgba(43, 27, 14, 0.32);
 
+  /* свет в комнате, пока картинки нужного времени суток нет: ночь синяя, день светлее и холоднее */
+  --night-shade: #24366e;
+  --day-light: #a9c8e6;
+  --evening-light: #ff9a3c;
+  /* лампы ночью остаются теплыми */
+  --lamp: rgba(255, 186, 104, 0.5);
+  --snow: #f4f8ff;
+
   /* шрифты */
   --font-display: 'Press Start 2P', 'Geist', system-ui, sans-serif;
   --font-ui: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;

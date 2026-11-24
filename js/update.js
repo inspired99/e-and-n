@@ -22,6 +22,7 @@ export const APP_FILES = [
   'js/update.js',
   'js/build.js',
   'js/merge.js',
+  'js/room-art.js',
 ];
 
 const KEY = 'en.version'; // версия, под которую последний раз перечитывали файлы

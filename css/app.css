@@ -378,7 +378,87 @@ main > .scene {
   position: relative;
   aspect-ratio: 3 / 2;
   border-bottom: 3px solid var(--ink);
-  background: var(--room-wall) url('../assets/bg/room.webp') center / cover no-repeat;
+  /* картинка комнаты по сезону и времени суток приходит из разметки: background-image у самого .room */
+  background: var(--room-wall) center / cover no-repeat;
+}
+
+/* свет поверх картинки, если нужного времени суток еще не нарисовано; персонажи стоят выше и не тонируются */
+.light,
+.glow,
+.snow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.light-night {
+  background: var(--night-shade);
+  mix-blend-mode: multiply;
+  opacity: 0.62;
+}
+
+/* торшер, лампа на тумбе и свеча на полке светят и ночью */
+.glow {
+  background:
+    radial-gradient(circle at 16% 29%, var(--lamp), transparent 11%),
+    radial-gradient(circle at 33% 42%, var(--lamp), transparent 8%),
+    radial-gradient(circle at 83% 35%, var(--lamp), transparent 6%);
+  mix-blend-mode: screen;
+}
+
+.light-day {
+  background: var(--day-light);
+  mix-blend-mode: screen;
+  opacity: 0.3;
+}
+
+.light-evening {
+  background: var(--evening-light);
+  mix-blend-mode: soft-light;
+  opacity: 0.5;
+}
+
+/* снег только за стеклами панорамного окна: три стекла между рамами, в процентах от картинки 1280 на 854 */
+.pane {
+  position: absolute;
+  top: 4%;
+  height: 32.3%;
+  overflow: hidden;
+}
+
+.pane-0 {
+  left: 23.1%;
+  width: 10.2%;
+}
+
+.pane-1 {
+  left: 34.8%;
+  width: 29.6%;
+}
+
+.pane-2 {
+  left: 65.8%;
+  width: 10.3%;
+}
+
+/* снежинка: квадратик в верху столбца высотой во все стекло; столбец едет вниз на свою высоту */
+.flake {
+  position: absolute;
+  top: 0;
+  left: var(--x);
+  width: var(--s);
+  height: 100%;
+  transform: translateY(calc(var(--y) - 100%));
+}
+
+.flake::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: var(--s);
+  height: var(--s);
+  background: var(--snow);
 }
 
 .room-hero {
@@ -1748,6 +1828,127 @@ ol.rule-list .rule h2::before {
   box-shadow: none;
 }
 
+/* выбор сезона и времени суток в меню */
+.seg-scene {
+  margin-top: 0;
+}
+
+.seg-scene .seg-btn {
+  padding-inline: var(--s3);
+}
+
+/* --- итог месяца: теплый лист, без сравнения ------------------------------------- */
+
+.story {
+  display: grid;
+  justify-items: center;
+  gap: var(--s3);
+  padding: var(--s2) 0 var(--s2);
+  text-align: center;
+}
+
+.story-hero {
+  position: relative;
+  display: grid;
+  place-items: end center;
+  width: 220px;
+  height: 152px;
+  border: 2px solid var(--ink);
+  border-radius: var(--r-card);
+  background: var(--tint);
+  overflow: hidden;
+}
+
+.story-hero .pic {
+  margin-bottom: -6px;
+}
+
+.spark {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+}
+
+.story-month {
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--cocoa);
+}
+
+.story-facts {
+  display: grid;
+  width: 100%;
+  margin: 0;
+  text-align: left;
+}
+
+.story-fact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  min-height: 40px;
+  border-top: 1px solid var(--line);
+}
+
+.story-fact dt {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--muted);
+}
+
+.story-fact dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.story-praise {
+  display: grid;
+  gap: var(--s2);
+  width: 100%;
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-card);
+  background: var(--white);
+  text-align: left;
+}
+
+.story-praise li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  line-height: 1.4;
+}
+
+.story-praise .px {
+  margin-top: 1px;
+}
+
+.story-end {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--pen);
+  text-wrap: balance;
+}
+
+.story-other {
+  width: 100%;
+}
+
+/* в итогах: итог месяца у каждого */
+.story-btns {
+  margin-top: var(--s4);
+}
+
+.story-btns .btn {
+  flex: 1 1 140px;
+  gap: 6px;
+}
+
 .num-value.is-off {
   font-size: var(--text-xs);
   font-weight: 500;
@@ -2155,6 +2356,19 @@ ol.rule-list .rule h2::before {
 /* --- движение ------------------------------------------------------------------ */
 
 @media (prefers-reduced-motion: no-preference) {
+  /* снег падает рывками, как в старых играх; без движения снежинки просто висят */
+  .flake {
+    animation: snow-fall var(--t) steps(30, end) var(--d) infinite;
+  }
+
+  .spark {
+    animation: twinkle 1.6s steps(1, end) infinite;
+  }
+
+  .spark:nth-child(2n) {
+    animation-delay: 0.8s;
+  }
+
   /* пиксельная графика двигается только в два кадра */
   .bob {
     animation: bob 1.2s step-end infinite;
@@ -2191,6 +2405,35 @@ ol.rule-list .rule h2::before {
 
   .toast:not([hidden]) {
     animation: toast-in 200ms var(--ease-out);
+  }
+}
+
+/* падение во все стекло и снос вбок туда и обратно, у каждой снежинки свой (--w) */
+@keyframes snow-fall {
+  0% {
+    transform: translateY(-100%) translateX(0);
+  }
+
+  25% {
+    transform: translateY(-74%) translateX(var(--w));
+  }
+
+  50% {
+    transform: translateY(-48%) translateX(0);
+  }
+
+  75% {
+    transform: translateY(-22%) translateX(calc(-1 * var(--w)));
+  }
+
+  100% {
+    transform: translateY(4%) translateX(0);
+  }
+}
+
+@keyframes twinkle {
+  50% {
+    opacity: 0.35;
   }
 }
 

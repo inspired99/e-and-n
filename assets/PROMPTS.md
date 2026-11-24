@@ -31,3 +31,20 @@ Edit the reference sprite sheet: keep everything exactly the same (the same char
 ```
 
 После этого: `node tools/sprites.mjs look assets/src/looks/elisey-winter.png elisey-winter`, образ `winter` в `LOOKS[0]` (`js/sprites.js`) и подпись «зимний» в `LOOK[0]` (`js/copy.js`).
+
+## Комната по сезону и времени суток
+
+Сейчас нарисован только осенний вечер (`assets/src/rooms/autumn-evening.png`). Остальные делаются правкой этой картинки: приложить ее и попросить поменять только свет и вид за окном, мебель и панорамное окно на тех же местах (по окну считается снег). Файлы: `assets/src/rooms/<сезон>-<время>.png`, сезон `winter`, `spring`, `summer`, `autumn`, время `day`, `evening`, `night`. После этого `node tools/rooms.mjs`.
+
+```
+Edit the reference image: keep the same room, the same furniture, the same panoramic window in exactly the same place and size, the same pixel style. Change only the light and the view outside the window. <ВАРИАНТ>. No people, no characters, no text, no UI.
+```
+
+Варианты для `<ВАРИАНТ>`:
+
+- зима, вечер: `Winter evening: snowy rooftops and trees outside, deep blue sky with the last pink light, warm lamps on inside.`
+- зима, ночь: `Winter night: dark navy sky, snow on rooftops, city windows glowing, the room lit only by the floor lamp, the small table lamp and a candle.`
+- зима, день: `Winter day: pale sky, snow everywhere outside, soft cool daylight in the room, lamps off.`
+- осень, день: `Autumn day: clear sky, orange and yellow trees outside, warm daylight in the room, lamps off.`
+- осень, ночь: `Autumn night: dark sky, city windows glowing, the room lit by the lamps.`
+- весна и лето так же: весна с зеленью и цветущими деревьями, лето с густой зеленью и долгим светлым вечером.

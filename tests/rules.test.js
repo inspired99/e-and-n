@@ -17,6 +17,13 @@ import {
   stickers,
   timeline,
   unseenKisses,
+  moscowHour,
+  seasonOf,
+  timeOfDay,
+  sceneAt,
+  praiseFor,
+  monthStory,
+  storyDue,
   weekOf,
 } from '../js/rules.js';
 
@@ -267,4 +274,130 @@ test('поцелуи: непоказанные человеку, моложе т
   assert.equal(unseenKisses({}, 0, 0, now), null);
   // через три дня тот же поцелуй уже не всплывает
   assert.equal(unseenKisses({ kisses: { a: kisses.a } }, 1, 0, now + 72 * h), null);
+});
+
+test('сезон по дате: границы 15 ноября, 15 марта, 1 июня и 1 сентября', () => {
+  const cases = {
+    '2026-11-14': 'autumn',
+    '2026-11-15': 'winter',
+    '2026-12-31': 'winter',
+    '2027-01-01': 'winter',
+    '2027-03-14': 'winter',
+    '2027-03-15': 'spring',
+    '2027-05-31': 'spring',
+    '2027-06-01': 'summer',
+    '2027-08-31': 'summer',
+    '2027-09-01': 'autumn',
+  };
+  for (const [day, season] of Object.entries(cases)) assert.equal(seasonOf(day), season, day);
+});
+
+test('время суток: часы каждого сезона, края включительно', () => {
+  // зима: день 9-16, вечер 16-21, ночь 21-9
+  assert.deepEqual([8, 9, 15, 16, 20, 21, 0].map((h) => timeOfDay('winter', h)), ['night', 'day', 'day', 'evening', 'evening', 'night', 'night']);
+  // осень: день 8-17, вечер 17-21
+  assert.deepEqual([7, 8, 16, 17, 20, 21].map((h) => timeOfDay('autumn', h)), ['night', 'day', 'day', 'evening', 'evening', 'night']);
+  // весна: день 7-19, вечер 19-22
+  assert.deepEqual([6, 7, 18, 19, 21, 22].map((h) => timeOfDay('spring', h)), ['night', 'day', 'day', 'evening', 'evening', 'night']);
+  // лето: день 6-20, вечер 20-23
+  assert.deepEqual([5, 6, 19, 20, 22, 23].map((h) => timeOfDay('summer', h)), ['night', 'day', 'day', 'evening', 'evening', 'night']);
+});
+
+test('сейчас в комнате: по Москве, 23:30 UTC это уже ночь следующего дня', () => {
+  assert.equal(moscowHour(new Date('2026-11-23T23:30:00Z')), 2);
+  assert.deepEqual(sceneAt(new Date('2026-11-23T23:30:00Z')), { season: 'winter', time: 'night', autoSeason: 'winter', autoTime: 'night' });
+  // 14 ноября 20:59 по Москве: еще осень и вечер; 21:00 уже ночь
+  assert.deepEqual(sceneAt(new Date('2026-11-14T17:59:00Z')), { season: 'autumn', time: 'evening', autoSeason: 'autumn', autoTime: 'evening' });
+  assert.equal(sceneAt(new Date('2026-11-14T18:00:00Z')).time, 'night');
+  // 15 ноября 00:30 по Москве (14-го 21:30 UTC): уже зима
+  assert.equal(sceneAt(new Date('2026-11-14T21:30:00Z')).season, 'winter');
+  // зимний день: 12:00 по Москве
+  assert.equal(sceneAt(new Date('2026-12-10T09:00:00Z')).time, 'day');
+  // выбор на устройстве важнее, но часы считаются по настоящему сезону
+  const forced = sceneAt(new Date('2026-12-10T09:00:00Z'), { season: 'summer', time: 'auto' });
+  assert.deepEqual([forced.season, forced.time], ['summer', 'day']);
+  assert.equal(sceneAt(new Date('2026-12-10T09:00:00Z'), { time: 'night' }).time, 'night');
+  assert.equal(sceneAt(new Date('2026-12-10T09:00:00Z'), { season: 'нет такого' }).season, 'winter');
+});
+
+/** Цифры месяца для проверки похвалы. */
+const facts = (over = {}) => ({
+  month: '2026-11',
+  sport: 8,
+  read: 10,
+  perWeek: { sport: 1.9, read: 2.3 },
+  cook: { done: 3, goal: 5, met: false },
+  food: { counted: 8, over: ['chips'], inLimit: 7 },
+  weeks: 4,
+  weeksMet: 1,
+  streak: { len: 2, from: '2026-11-03', to: '2026-11-04' },
+  useful: 21,
+  ...over,
+});
+
+test('похвала: цель готовки, вся еда в лимите и недели с целями идут первыми, не больше трех', () => {
+  const p = praiseFor(facts({ cook: { done: 5, goal: 5, met: true }, food: { counted: 8, over: [], inLimit: 8 }, weeksMet: 3, streak: { len: 6, from: '2026-11-10', to: '2026-11-15' } }), facts({ sport: 2 }));
+  assert.deepEqual(p.map((x) => x.code), ['cook-goal', 'food-all', 'week-goals']);
+  assert.deepEqual(p[0], { code: 'cook-goal', done: 5, goal: 5 });
+});
+
+test('похвала: больше, чем в прошлом месяце у себя же, и длинная серия', () => {
+  const p = praiseFor(facts({ sport: 12, streak: { len: 5, from: '2026-11-10', to: '2026-11-14' } }), facts({ month: '2026-10', sport: 7, read: 12 }));
+  assert.deepEqual(p.map((x) => x.code), ['more-sport', 'streak', 'food-most']);
+  assert.deepEqual(p[0], { code: 'more-sport', now: 12, was: 7, month: '2026-10' });
+  // чтения меньше, чем в прошлом: про чтение молчим
+  assert.ok(!p.some((x) => x.code === 'more-read'));
+});
+
+test('похвала: без прошлого месяца и почти без поводов все равно две строки, тихий месяц тоже', () => {
+  const p = praiseFor(facts({ food: { counted: 8, over: ['chips', 'bun', 'burger', 'shawarma', 'fastfood'], inLimit: 3 } }), null);
+  assert.deepEqual(p.map((x) => x.code), ['steady']);
+  // одна строка дополняется до двух
+  const one = praiseFor(facts(), null);
+  assert.deepEqual(one.map((x) => x.code), ['food-most', 'steady']);
+  const quiet = praiseFor(facts({ sport: 0, read: 0, useful: 0, cook: { done: 0, goal: 5, met: false }, food: { counted: 0, over: [], inLimit: 0 } }), null);
+  assert.deepEqual(quiet.map((x) => x.code), ['quiet']);
+});
+
+test('итог месяца по журналу: октябрь с переносом, сравнение только с собой', () => {
+  const state = make({
+    settings: { carry: { '2026-10': OCTOBER } },
+    events: [
+      [0, 'sport', '2026-10-26'],
+      [0, 'sport', '2026-10-28'],
+      [0, 'read', '2026-10-27'],
+      [0, 'read', '2026-10-28'],
+      [0, 'read', '2026-10-29'],
+      [0, 'read', '2026-10-30'],
+      [1, 'cook', '2026-10-29'],
+      [0, 'sport', '2026-11-02'],
+      [0, 'sport', '2026-11-03'],
+      [0, 'sport', '2026-11-05'],
+    ],
+  });
+  const oct = monthStory(state, 1, '2026-10', '2026-11-24');
+  assert.equal(oct.cook.done, 5);
+  assert.equal(oct.cook.met, true);
+  assert.deepEqual(oct.food.over, ['chocolate']);
+  assert.equal(oct.food.inLimit, 7);
+  assert.equal(oct.praise[0].code, 'cook-goal'); // Неля дотянула готовку до цели
+  const el = monthStory(state, 0, '2026-10', '2026-11-24');
+  assert.deepEqual([el.sport, el.read], [2, 4]);
+  assert.equal(el.perWeek.sport, 0.5); // 2 за 31 день: 0,45 в неделю
+  assert.deepEqual(el.streak, { len: 5, from: '2026-10-26', to: '2026-10-30' });
+  assert.ok(el.praise.some((p) => p.code === 'streak'));
+  assert.ok(el.praise.some((p) => p.code === 'food-all')); // сырки 3 / 5, шоколад 1 / 1: все в лимите
+  // в ноябре спорта больше, чем в октябре
+  const nov = monthStory(state, 0, '2026-11', '2026-12-02');
+  assert.deepEqual(nov.praise.find((p) => p.code === 'more-sport'), { code: 'more-sport', now: 3, was: 2, month: '2026-10' });
+});
+
+test('итог при входе: первые 7 дней месяца, один раз, только если дневник уже был', () => {
+  const state = make({ settings: { carry: { '2026-10': OCTOBER } } });
+  assert.equal(storyDue(state, '2026-11-01', null), '2026-10');
+  assert.equal(storyDue(state, '2026-11-07', '2026-09'), '2026-10');
+  assert.equal(storyDue(state, '2026-11-08', null), null); // позже седьмого не всплывает
+  assert.equal(storyDue(state, '2026-11-03', '2026-10'), null); // уже показан
+  assert.equal(storyDue(state, '2026-10-03', null), null); // в сентябре дневника не было
+  assert.equal(storyDue(state, '2026-12-02', '2026-10'), '2026-11');
 });

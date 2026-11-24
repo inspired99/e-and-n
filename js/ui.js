@@ -2,9 +2,9 @@
 // Все пользовательские строки проходят через esc(). Состояние показываем картинкой,
 // но каждое число подписано словом.
 
-import { FOOD, GOAL_KEYS, GOAL_MAX, GOOD, RANGE, WEEKLY, addDays, dow, isFood, monthWeeks, preview, qty, weekDays } from './rules.js';
+import { FOOD, GOAL_KEYS, GOAL_MAX, GOOD, RANGE, SEASONS, TIMES, WEEKLY, addDays, dow, isFood, monthStory, monthWeeks, preview, qty, weekDays } from './rules.js';
 import * as C from './copy.js';
-import { LOOKS, STATURE, hero, heroTogether, icon, navIcon, prop, sticker } from './sprites.js';
+import { LOOKS, STATURE, hero, heroTogether, icon, navIcon, prop, roomArt, sticker } from './sprites.js';
 
 const { esc } = C;
 
@@ -172,9 +172,55 @@ function kissButton(m) {
   return `<button class="kiss-btn" type="button" data-act="kiss" data-key="kiss" aria-label="отправить поцелуй: ${esc(m.players[m.other].name)}">${icon('heart', { scale: 3 })}</button>`;
 }
 
+/**
+ * Снег за панорамным окном: три стекла между рамами, у каждого свои снежинки.
+ * Расстановка своя у каждой снежинки, но одна и та же при каждой отрисовке: экран не мигает.
+ */
+const PANES = [8, 18, 8];
+const FLAKES = (() => {
+  let seed = 7;
+  const rnd = () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
+  return PANES.map((n) =>
+    Array.from({ length: n }, () => {
+      const size = rnd();
+      // крупные падают быстрее: ближе к окну
+      const s = size < 0.5 ? 2 : size < 0.82 ? 3 : 4;
+      return {
+        x: Math.round(rnd() * 92 + 2),
+        y: Math.round(rnd() * 90 + 4),
+        t: Math.round((s === 4 ? 4 + rnd() * 2 : s === 3 ? 5.5 + rnd() * 2.5 : 7 + rnd() * 4) * 10) / 10,
+        // старт вразнобой: снег уже идет и никогда не падает одной волной
+        d: -Math.round(rnd() * 110) / 10,
+        // снос вбок у каждой своя сторона и сила
+        w: Math.round((rnd() * 2 - 1) * 5),
+        s,
+      };
+    }),
+  );
+})();
+
+export function snowLayer() {
+  const pane = (flakes, i) =>
+    `<div class="pane pane-${i}">${flakes.map((f) => `<i class="flake" style="--x: ${f.x}%; --y: ${f.y}%; --t: ${f.t}s; --d: ${f.d}s; --w: ${f.w}px; --s: ${f.s}px"></i>`).join('')}</div>`;
+  return `<div class="snow" aria-hidden="true">${FLAKES.map(pane).join('')}</div>`;
+}
+
+/** Свет поверх картинки, если нужного времени суток еще не нарисовано. Персонажи стоят выше и не тонируются. */
+function lightLayer(light) {
+  if (!light) return '';
+  return `<span class="light light-${light}" aria-hidden="true"></span>${light === 'night' ? '<span class="glow" aria-hidden="true"></span>' : ''}`;
+}
+
 function scene(m) {
+  const { season, time } = m.scene;
+  const art = roomArt(season, time);
+  const bg = art.file ? ` background-image: url('${art.file}');` : '';
+  const snow = season === 'winter' && time !== 'day' ? snowLayer() : '';
   return `<section class="scene" aria-label="комната">
-    <div class="room" style="--stature: ${STATURE[1]}">${roomHero(m, 0)}${roomHero(m, 1)}${kissButton(m)}</div>
+    <div class="room" data-season="${season}" data-time="${time}" style="--stature: ${STATURE[1]};${bg}">${lightLayer(art.light)}${snow}${roomHero(m, 0)}${roomHero(m, 1)}${kissButton(m)}</div>
     ${board(m)}
   </section>`;
 }
@@ -379,6 +425,14 @@ function monthForTwo(m) {
   </table>`;
 }
 
+/** Итог месяца у каждого: только за закрытые месяцы. */
+function storyButtons(m) {
+  if (m.month >= m.today.slice(0, 7)) return '';
+  const btn = (who) =>
+    `<button class="btn btn-sm" type="button" data-act="story-open" data-who="${who}" data-month="${m.month}" data-key="story-${who}-${m.month}">${icon('star')}итог месяца: ${esc(m.players[who].name)}</button>`;
+  return `<div class="row story-btns">${btn(0)}${btn(1)}</div>`;
+}
+
 function stats(m) {
   return `<main id="main" class="page">
     <h1 class="sr">итоги</h1>
@@ -388,6 +442,7 @@ function stats(m) {
       ${monthNav(m)}
     </div>
     ${monthForTwo(m)}
+    ${storyButtons(m)}
     </section>
     ${person(m, 0)}
     ${person(m, 1)}
@@ -616,6 +671,16 @@ function numRow(label, path, value, { min, max, nullable = false, off = false, t
   </div>`;
 }
 
+/** Выбор сезона или времени суток: «авто» и варианты. В скобках у «авто» то, что сейчас по Москве. */
+function scenePicker(m, kind, values, names, label) {
+  const cur = m.scenePref[kind] || 'auto';
+  const auto = kind === 'season' ? m.scene.autoSeason : m.scene.autoTime;
+  const btn = (v, text) =>
+    `<button class="seg-btn" type="button" aria-pressed="${cur === v}" data-act="scene" data-kind="${kind}" data-v="${v}" data-key="scene-${kind}-${v}">${text}</button>`;
+  return `<p class="set-label">${label}</p>
+    <div class="seg seg-scene" role="group" aria-label="${label}">${btn('auto', `авто: ${names[auto]}`)}${values.map((v) => btn(v, names[v])).join('')}</div>`;
+}
+
 export function menuSheet(m) {
   const off = m.kind === 'demo';
   const readOnly = off ? 'disabled' : '';
@@ -646,6 +711,12 @@ export function menuSheet(m) {
       <h3>лимиты на месяц</h3>
       <p class="hint">Ниже нуля стоит «не считаем»: продукт пропадает из таблицы еды и из листа «отметить».</p>
       ${limits}
+    </section>
+    <section class="set">
+      <h3>комната</h3>
+      <p class="hint">Сезон и время суток меняются сами по московскому времени. Здесь можно выбрать свое, только на этом телефоне.</p>
+      ${scenePicker(m, 'season', SEASONS, C.SEASON_NAME, 'сезон')}
+      ${scenePicker(m, 'time', TIMES, C.TIME_NAME, 'время суток')}
     </section>
     <section class="set">
       <h3>персонаж</h3>
@@ -773,5 +844,41 @@ export function kissMoment({ name, n = 1 }) {
 /** Пара сердечек над кнопкой у того, кто отправил. */
 export function kissPuff() {
   return [-14, 4, 18].map((x, i) => `<span class="puff-heart" style="--x: ${x}px; --d: ${i * 0.12}s">${icon('heart')}</span>`).join('');
+}
+
+// --- итог месяца --------------------------------------------------------------------
+
+/** Звездочки и сердечки вокруг персонажа: [x %, y %, значок, масштаб]. */
+const SPARKS = [
+  [8, 16, 'star', 2],
+  [76, 8, 'star', 3],
+  [16, 62, 'heart', 2],
+  [84, 56, 'star', 2],
+  [46, 4, 'heart', 2],
+];
+
+/** Итог месяца для одного человека: цифры, похвала по правилам и «ты молодец». Без сравнения со вторым. */
+export function storySheet(m, sel) {
+  const who = Number(sel.who) === 1 ? 1 : 0;
+  const other = who === 0 ? 1 : 0;
+  const st = monthStory(m.state, who, sel.month, m.today);
+  const name = esc(m.players[who].name);
+  const fact = (pic, label, value) => `<div class="story-fact"><dt>${pic}<span>${label}</span></dt><dd>${value}</dd></div>`;
+  const sparks = SPARKS.map(([x, y, kind, s]) => `<span class="spark" style="--x: ${x}%; --y: ${y}%">${icon(kind, { scale: s })}</span>`).join('');
+  const food = st.food.counted ? `в лимитах ${st.food.inLimit} из ${st.food.counted}` : 'не считаем';
+  return `${sheetHead('итог месяца')}
+    <div class="story">
+      <div class="story-hero" aria-hidden="true">${sparks}${hero(who, m.looks[who], 'fit', { size: 136 })}</div>
+      <p class="story-month">${name}, ${C.monthTitle(sel.month)}</p>
+      <dl class="story-facts">
+        ${fact(icon('sport'), 'спорт', `${C.nTimes(st.sport)}, в среднем ${C.dec(st.perWeek.sport)} в неделю`)}
+        ${fact(icon('read'), 'чтение', `${C.nTimes(st.read)}, в среднем ${C.dec(st.perWeek.read)} в неделю`)}
+        ${fact(icon('cook'), 'готовка', `${st.cook.done} из ${st.cook.goal}${st.cook.met && st.cook.goal ? ', цель набрана' : ''}`)}
+        ${fact(navIcon('food'), 'еда', food)}
+      </dl>
+      <ul class="story-praise">${st.praise.map((p) => `<li>${icon('star')}<span>${C.praiseText(p)}</span></li>`).join('')}</ul>
+      <p class="story-end">${name}, ты молодец</p>
+      <button class="btn story-other" type="button" data-act="story-open" data-who="${other}" data-month="${sel.month}" data-key="story-other">итог месяца: ${esc(m.players[other].name)}</button>
+    </div>`;
 }
 

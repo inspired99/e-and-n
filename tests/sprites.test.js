@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { FOOD, GOOD } from '../js/rules.js';
-import { LOOKS, POSES, allGrids, hero, icon } from '../js/sprites.js';
+import { LOOKS, POSES, allGrids, hero, icon, roomArt } from '../js/sprites.js';
+import { ROOM_ART } from '../js/room-art.js';
 
 test('все сетки прямоугольные и нужного размера', () => {
   for (const g of allGrids()) {
@@ -28,4 +29,26 @@ test('у каждого образа есть картинка на каждую
   assert.match(hero(0, 'нет такого', 'нет такой'), /elisey-base-idle/);
   assert.match(hero(1, 'winter', 'cough'), /nelya-winter-cough/);
   assert.match(hero(0, 'winter', 'idle'), /elisey-winter-idle/); // зимний у Елисея появился 29.10
+});
+
+test('картинки комнаты: список совпадает с файлами, без запросов к несуществующим', () => {
+  const files = fs.readdirSync('assets/bg').filter((f) => /^room-.+\.webp$/.test(f)).map((f) => f.slice(5, -5)).sort();
+  assert.deepEqual([...ROOM_ART].sort(), files);
+  for (const season of ['winter', 'spring', 'summer', 'autumn']) {
+    for (const time of ['day', 'evening', 'night']) {
+      const art = roomArt(season, time);
+      assert.ok(fs.existsSync(art.file), `${season} ${time}: ${art.file}`);
+    }
+  }
+});
+
+test('ближайшая картинка: сначала то же время суток, потом соседний сезон; свет, если время другое', () => {
+  assert.deepEqual(roomArt('winter', 'night', ['autumn-evening']), { file: 'assets/bg/room-autumn-evening.webp', light: 'night' });
+  assert.deepEqual(roomArt('autumn', 'evening', ['autumn-evening']), { file: 'assets/bg/room-autumn-evening.webp', light: null });
+  // ночь любого сезона лучше вечера того же сезона
+  assert.deepEqual(roomArt('winter', 'night', ['winter-evening', 'summer-night']), { file: 'assets/bg/room-summer-night.webp', light: null });
+  // из двух ночей ближе соседний сезон: у зимы это осень, а не лето
+  assert.equal(roomArt('winter', 'night', ['summer-night', 'autumn-night']).file, 'assets/bg/room-autumn-night.webp');
+  assert.deepEqual(roomArt('winter', 'day', ['winter-night']), { file: 'assets/bg/room-winter-night.webp', light: 'day' });
+  assert.deepEqual(roomArt('spring', 'day', []), { file: null, light: 'day' });
 });
